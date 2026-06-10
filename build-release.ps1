@@ -7,6 +7,8 @@ $portableDir = Join-Path $outputs "WindowsScreenTimePortable"
 $installerDir = Join-Path $outputs "WindowsScreenTimeInstaller"
 $packageDir = Join-Path $root "WindowsScreenTimeApp\package"
 
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $appOut, $portableDir, $installerDir
+
 dotnet publish (Join-Path $root "WindowsScreenTimeApp\WindowsScreenTimeApp.csproj") `
   -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=true `
@@ -18,8 +20,14 @@ Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $appOut "WindowsScre
 New-Item -ItemType Directory -Force -Path $portableDir, $installerDir, $packageDir | Out-Null
 
 foreach ($name in @("WindowsScreenTime.exe", "app.ico", "app-icon.png", "README.md")) {
-  Copy-Item -Force -LiteralPath (Join-Path $appOut $name) -Destination $portableDir
-  Copy-Item -Force -LiteralPath (Join-Path $appOut $name) -Destination $packageDir
+  $source = switch ($name) {
+    "README.md" { Join-Path $root $name }
+    "app.ico" { Join-Path $root "WindowsScreenTimeApp\app.ico" }
+    "app-icon.png" { Join-Path $root "WindowsScreenTimeApp\app-icon.png" }
+    default { Join-Path $appOut $name }
+  }
+  Copy-Item -Force -LiteralPath $source -Destination $portableDir
+  Copy-Item -Force -LiteralPath $source -Destination $packageDir
 }
 
 dotnet publish (Join-Path $root "WindowsScreenTimeUninstaller\WindowsScreenTimeUninstaller.csproj") `

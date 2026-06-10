@@ -9,8 +9,8 @@ public sealed class SetupForm : Form
 {
     private const string AppName = "Windows Screen Time";
     private const string FolderName = "WindowsScreenTime";
-    private const string AppVersion = "1.4.0";
-    private const string Publisher = "哈呼呼吗";
+    private const string AppVersion = "1.4.1";
+    private const string Publisher = "\u54c8\u547c\u547c\u5417";
     private const string RegistryKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\WindowsScreenTime";
 
     private readonly TextBox _installPath = new();
@@ -19,6 +19,13 @@ public sealed class SetupForm : Form
     private readonly Button _installButton = new();
     private readonly Button _browseButton = new();
     private readonly Button _cancelButton = new();
+    private readonly CheckBox _launchAfterInstall = new();
+    private readonly Panel _finishOptions = new();
+
+    private string? _installedExePath;
+    private string? _installedDir;
+    private bool _installCompleted;
+    private bool _finishCloseHandled;
 
     public SetupForm()
     {
@@ -32,6 +39,20 @@ public sealed class SetupForm : Form
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
 
         BuildLayout();
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        if (_installCompleted && !_finishCloseHandled)
+        {
+            _finishCloseHandled = true;
+            if (_launchAfterInstall.Checked)
+            {
+                LaunchInstalledApp();
+            }
+        }
+
+        base.OnFormClosing(e);
     }
 
     private void BuildLayout()
@@ -64,7 +85,7 @@ public sealed class SetupForm : Form
         {
             Dock = DockStyle.Bottom,
             Height = 72,
-            Text = $"v{AppVersion}\r\n作者：{Publisher}",
+            Text = $"v{AppVersion}\r\n\u4f5c\u8005\uff1a{Publisher}",
             ForeColor = Color.FromArgb(148, 163, 184),
             TextAlign = ContentAlignment.BottomLeft
         });
@@ -72,7 +93,7 @@ public sealed class SetupForm : Form
         {
             Dock = DockStyle.Top,
             Height = 120,
-            Text = "安装到 C 盘 Program Files。\r\n会显示在 Windows 程序和功能中，可从系统设置卸载。",
+            Text = "\u5b89\u88c5\u5230 C \u76d8 Program Files\u3002\r\n\u4f1a\u663e\u793a\u5728 Windows \u7a0b\u5e8f\u548c\u529f\u80fd\u4e2d\uff0c\u53ef\u4ece\u7cfb\u7edf\u8bbe\u7f6e\u5378\u8f7d\u3002",
             ForeColor = Color.FromArgb(203, 213, 225),
             TextAlign = ContentAlignment.TopLeft
         });
@@ -115,7 +136,7 @@ public sealed class SetupForm : Form
         layout.Controls.Add(new Label
         {
             Dock = DockStyle.Fill,
-            Text = "准备安装",
+            Text = "\u51c6\u5907\u5b89\u88c5",
             Font = new Font(Font.FontFamily, 22F, FontStyle.Bold),
             ForeColor = Color.FromArgb(15, 23, 42),
             TextAlign = ContentAlignment.MiddleLeft
@@ -124,7 +145,7 @@ public sealed class SetupForm : Form
         layout.Controls.Add(new Label
         {
             Dock = DockStyle.Fill,
-            Text = "安装位置",
+            Text = "\u5b89\u88c5\u4f4d\u7f6e",
             ForeColor = Color.FromArgb(71, 85, 105),
             TextAlign = ContentAlignment.MiddleLeft
         }, 0, 1);
@@ -142,7 +163,7 @@ public sealed class SetupForm : Form
         _installPath.Dock = DockStyle.Fill;
         _installPath.Text = DefaultInstallDir();
         _installPath.BorderStyle = BorderStyle.FixedSingle;
-        _browseButton.Text = "浏览";
+        _browseButton.Text = "\u6d4f\u89c8";
         _browseButton.Dock = DockStyle.Fill;
         _browseButton.FlatStyle = FlatStyle.System;
         _browseButton.Click += (_, _) => BrowseInstallPath();
@@ -155,12 +176,16 @@ public sealed class SetupForm : Form
         _progress.Style = ProgressBarStyle.Continuous;
         _status.Dock = DockStyle.Top;
         _status.Height = 30;
-        _status.Text = "点击安装即可开始。";
+        _status.Text = "\u70b9\u51fb\u5b89\u88c5\u5373\u53ef\u5f00\u59cb\u3002";
         _status.ForeColor = Color.FromArgb(71, 85, 105);
         var progressHost = new Panel { Dock = DockStyle.Fill, BackColor = panel.BackColor };
         progressHost.Controls.Add(_progress);
         progressHost.Controls.Add(_status);
         layout.Controls.Add(progressHost, 0, 3);
+
+        _finishOptions.Dock = DockStyle.Fill;
+        _finishOptions.BackColor = panel.BackColor;
+        layout.Controls.Add(_finishOptions, 0, 4);
 
         var buttons = new FlowLayoutPanel
         {
@@ -168,16 +193,16 @@ public sealed class SetupForm : Form
             FlowDirection = FlowDirection.RightToLeft,
             BackColor = panel.BackColor
         };
-        _installButton.Text = "安装 / 更新";
+        _installButton.Text = "\u5b89\u88c5 / \u66f4\u65b0";
         _installButton.Width = 120;
         _installButton.Height = 34;
         _installButton.BackColor = Color.FromArgb(37, 99, 235);
         _installButton.ForeColor = Color.White;
         _installButton.FlatStyle = FlatStyle.Flat;
         _installButton.FlatAppearance.BorderColor = Color.FromArgb(37, 99, 235);
-        _installButton.Click += async (_, _) => await InstallAsync();
+        _installButton.Click += async (_, _) => await InstallOrFinishAsync();
 
-        _cancelButton.Text = "取消";
+        _cancelButton.Text = "\u53d6\u6d88";
         _cancelButton.Width = 90;
         _cancelButton.Height = 34;
         _cancelButton.FlatStyle = FlatStyle.System;
@@ -189,31 +214,45 @@ public sealed class SetupForm : Form
         return panel;
     }
 
+    private async Task InstallOrFinishAsync()
+    {
+        if (_installCompleted)
+        {
+            Close();
+            return;
+        }
+
+        await InstallAsync();
+    }
+
     private async Task InstallAsync()
     {
         SetBusy(true);
         try
         {
+            string exePath = string.Empty;
+            string installDir = string.Empty;
+
             await Task.Run(() =>
             {
-                UpdateProgress(8, "正在关闭旧版本...");
+                UpdateProgress(8, "\u6b63\u5728\u5173\u95ed\u65e7\u7248\u672c...");
                 StopRunningApp();
 
-                var installDir = _installPath.Text.Trim();
+                installDir = _installPath.Text.Trim();
                 Directory.CreateDirectory(installDir);
 
-                UpdateProgress(28, "正在复制程序文件...");
+                UpdateProgress(28, "\u6b63\u5728\u590d\u5236\u7a0b\u5e8f\u6587\u4ef6...");
                 Extract("payload.WindowsScreenTime.exe", Path.Combine(installDir, "WindowsScreenTime.exe"));
                 Extract("payload.WindowsScreenTimeUninstall.exe", Path.Combine(installDir, "WindowsScreenTimeUninstall.exe"));
                 Extract("payload.app.ico", Path.Combine(installDir, "app.ico"));
                 Extract("payload.app-icon.png", Path.Combine(installDir, "app-icon.png"));
                 Extract("payload.README.md", Path.Combine(installDir, "README.md"));
 
-                var exePath = Path.Combine(installDir, "WindowsScreenTime.exe");
+                exePath = Path.Combine(installDir, "WindowsScreenTime.exe");
                 var uninstallerPath = Path.Combine(installDir, "WindowsScreenTimeUninstall.exe");
                 var iconPath = Path.Combine(installDir, "app.ico");
 
-                UpdateProgress(58, "正在创建快捷方式...");
+                UpdateProgress(58, "\u6b63\u5728\u521b\u5efa\u5feb\u6377\u65b9\u5f0f...");
                 CreateShortcut(
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), "Windows Screen Time.lnk"),
                     exePath,
@@ -225,35 +264,44 @@ public sealed class SetupForm : Form
                     installDir,
                     iconPath);
 
-                UpdateProgress(74, "正在注册卸载信息...");
+                UpdateProgress(82, "\u6b63\u5728\u6ce8\u518c\u5378\u8f7d\u4fe1\u606f...");
                 RegisterUninstallInfo(installDir, exePath, uninstallerPath, iconPath);
-
-                UpdateProgress(92, "正在启动应用...");
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = exePath,
-                    WorkingDirectory = installDir,
-                    UseShellExecute = true
-                });
             });
 
-            UpdateProgress(100, "安装/更新完成。旧版本数据已保留。");
-            MessageBox.Show("安装/更新完成。你可以在 Windows 程序和功能中卸载此程序。", AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
-            Close();
+            _installedExePath = exePath;
+            _installedDir = installDir;
+            _installCompleted = true;
+            UpdateProgress(100, "\u5b89\u88c5/\u66f4\u65b0\u5b8c\u6210\u3002\u53ef\u9009\u62e9\u5173\u95ed\u540e\u662f\u5426\u542f\u52a8\u5e94\u7528\u3002");
+            SetFinished();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"安装失败：{ex.Message}", AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            UpdateProgress(0, "安装失败。");
+            MessageBox.Show($"\u5b89\u88c5\u5931\u8d25\uff1a{ex.Message}", AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            UpdateProgress(0, "\u5b89\u88c5\u5931\u8d25\u3002");
             SetBusy(false);
         }
+    }
+
+    private void LaunchInstalledApp()
+    {
+        if (string.IsNullOrWhiteSpace(_installedExePath) || string.IsNullOrWhiteSpace(_installedDir))
+        {
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = _installedExePath,
+            WorkingDirectory = _installedDir,
+            UseShellExecute = true
+        });
     }
 
     private void BrowseInstallPath()
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "选择安装目录",
+            Description = "\u9009\u62e9\u5b89\u88c5\u76ee\u5f55",
             SelectedPath = _installPath.Text
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
@@ -268,6 +316,34 @@ public sealed class SetupForm : Form
         _browseButton.Enabled = !busy;
         _cancelButton.Enabled = !busy;
         _installPath.Enabled = !busy;
+    }
+
+    private void SetFinished()
+    {
+        _installButton.Text = "\u5b8c\u6210";
+        _installButton.Enabled = true;
+        _browseButton.Enabled = false;
+        _cancelButton.Enabled = true;
+        _cancelButton.Text = "\u5173\u95ed";
+        _installPath.Enabled = false;
+        ShowLaunchAfterInstallOption();
+    }
+
+    private void ShowLaunchAfterInstallOption()
+    {
+        if (_launchAfterInstall.Parent is not null)
+        {
+            return;
+        }
+
+        _launchAfterInstall.Text = "\u5173\u95ed\u540e\u542f\u52a8\u5e94\u7528";
+        _launchAfterInstall.Checked = true;
+        _launchAfterInstall.AutoSize = true;
+        _launchAfterInstall.ForeColor = Color.FromArgb(51, 65, 85);
+        _launchAfterInstall.Location = new Point(0, 10);
+        _launchAfterInstall.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+        _finishOptions.Controls.Add(_launchAfterInstall);
+        _launchAfterInstall.BringToFront();
     }
 
     private void UpdateProgress(int value, string text)
@@ -308,7 +384,7 @@ public sealed class SetupForm : Form
     private static void RegisterUninstallInfo(string installDir, string exePath, string uninstallerPath, string iconPath)
     {
         using var key = Registry.LocalMachine.CreateSubKey(RegistryKeyPath, true)
-            ?? throw new InvalidOperationException("无法写入卸载注册表。");
+            ?? throw new InvalidOperationException("\u65e0\u6cd5\u5199\u5165\u5378\u8f7d\u6ce8\u518c\u8868\u3002");
         key.SetValue("DisplayName", AppName);
         key.SetValue("DisplayVersion", AppVersion);
         key.SetValue("Publisher", Publisher);

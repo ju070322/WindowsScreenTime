@@ -136,14 +136,14 @@ public sealed class MainForm : Form
         }, 0, 0);
 
         var viewSection = MakeSidebarSection("\u89c6\u56fe");
-        viewSection.Controls.Add(_weekNav);
         viewSection.Controls.Add(_todayNav);
+        viewSection.Controls.Add(_weekNav);
         layout.Controls.Add(viewSection, 0, 1);
 
         var actionSection = MakeSidebarSection("\u64cd\u4f5c");
-        actionSection.Controls.Add(MakeNavButton("\u8bbe\u7f6e", (_, _) => OpenSettings()));
-        actionSection.Controls.Add(MakeNavButton("\u5bfc\u5165\u6570\u636e", (_, _) => ImportData()));
         actionSection.Controls.Add(MakeNavButton("\u5bfc\u51fa\u6570\u636e", (_, _) => ExportData()));
+        actionSection.Controls.Add(MakeNavButton("\u5bfc\u5165\u6570\u636e", (_, _) => ImportData()));
+        actionSection.Controls.Add(MakeNavButton("\u8bbe\u7f6e", (_, _) => OpenSettings()));
         actionSection.Controls.Add(MakeNavButton("\u91cd\u7f6e\u7edf\u8ba1", (_, _) => ResetData()));
         layout.Controls.Add(actionSection, 0, 2);
 
@@ -162,10 +162,10 @@ public sealed class MainForm : Form
         var section = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.BottomUp,
+            FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             BackColor = Theme.Sidebar,
-            Padding = new Padding(0, 24, 0, 0)
+            Padding = new Padding(0, 8, 0, 0)
         };
         section.Controls.Add(new Label
         {
