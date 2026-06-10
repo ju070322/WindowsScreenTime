@@ -14,7 +14,6 @@ public sealed class MainForm : Form
     private readonly Label _foregroundValue = new();
     private readonly Label _backgroundValue = new();
     private readonly Label _currentValue = new();
-    private readonly Label _addressLabel = new();
     private readonly BarChartPanel _chart = new();
     private readonly ListView _usageList = new();
     private readonly Label _emptyState = new();
@@ -173,58 +172,18 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 3,
             Padding = new Padding(18),
             BackColor = Theme.Window
         };
-        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
         content.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 44));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 56));
 
-        content.Controls.Add(BuildCommandBar(), 0, 0);
-        content.Controls.Add(BuildMetrics(), 0, 1);
-        content.Controls.Add(BuildChartPanel(), 0, 2);
-        content.Controls.Add(BuildUsagePanel(), 0, 3);
+        content.Controls.Add(BuildMetrics(), 0, 0);
+        content.Controls.Add(BuildChartPanel(), 0, 1);
+        content.Controls.Add(BuildUsagePanel(), 0, 2);
         return content;
-    }
-
-    private Control BuildCommandBar()
-    {
-        var bar = MakePanel();
-        bar.Padding = new Padding(10, 8, 10, 8);
-        bar.Margin = new Padding(0, 0, 0, 14);
-
-        var layout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 5,
-            RowCount = 1,
-            BackColor = Color.White
-        };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
-        bar.Controls.Add(layout);
-
-        var arrows = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.White, WrapContents = false };
-        arrows.Controls.Add(MakeIconButton("<", (_, _) => SetPeriod(UsagePeriod.Day)));
-        arrows.Controls.Add(MakeIconButton(">", (_, _) => SetPeriod(UsagePeriod.Week)));
-        layout.Controls.Add(arrows, 0, 0);
-
-        _addressLabel.Dock = DockStyle.Fill;
-        _addressLabel.BackColor = Theme.Address;
-        _addressLabel.ForeColor = Theme.Text;
-        _addressLabel.TextAlign = ContentAlignment.MiddleLeft;
-        _addressLabel.Padding = new Padding(12, 0, 0, 0);
-        layout.Controls.Add(_addressLabel, 1, 0);
-
-        layout.Controls.Add(MakeButton("\u5bfc\u51fa", (_, _) => ExportData(), false), 2, 0);
-        layout.Controls.Add(MakeButton("\u5bfc\u5165", (_, _) => ImportData(), false), 3, 0);
-        layout.Controls.Add(MakeButton("\u6253\u5f00\u9879\u76ee", (_, _) => OpenProjectUrl(), false), 4, 0);
-        return bar;
     }
 
     private Control BuildMetrics()
@@ -360,24 +319,6 @@ public sealed class MainForm : Form
         return button;
     }
 
-    private static Button MakeIconButton(string text, EventHandler onClick)
-    {
-        var button = new Button
-        {
-            Text = text,
-            Width = 34,
-            Height = 34,
-            Margin = new Padding(0, 0, 8, 0),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Color.White,
-            ForeColor = Theme.Text
-        };
-        button.FlatAppearance.BorderColor = Theme.Line;
-        button.FlatAppearance.BorderSize = 1;
-        button.Click += onClick;
-        return button;
-    }
-
     private static Button MakeNavButton(string text, EventHandler onClick)
     {
         var button = new Button
@@ -425,9 +366,6 @@ public sealed class MainForm : Form
         _foregroundValue.Text = UiFormat.Duration(_tracker.ForegroundTotal);
         _backgroundValue.Text = UiFormat.Duration(_tracker.BackgroundTotal);
         _currentValue.Text = _tracker.Current.AppName;
-        _addressLabel.Text = _tracker.Period == UsagePeriod.Day
-            ? "Windows Screen Time  >  \u4eca\u65e5\u4f7f\u7528\u65f6\u95f4"
-            : "Windows Screen Time  >  \u672c\u5468\u4f7f\u7528\u65f6\u95f4";
         _notifyIcon.Text = ClipNotifyText($"Windows Screen Time\n\u5f53\u524d\uff1a{_tracker.Current.AppName}\n\u603b\u8ba1\uff1a{UiFormat.Duration(_tracker.ActiveTotal)}");
         RefreshNavState();
 
@@ -625,7 +563,6 @@ public sealed class MainForm : Form
         public static readonly Color Window = Color.FromArgb(243, 244, 248);
         public static readonly Color Sidebar = Color.FromArgb(248, 249, 252);
         public static readonly Color NavActive = Color.FromArgb(230, 238, 255);
-        public static readonly Color Address = Color.FromArgb(247, 248, 251);
         public static readonly Color Text = Color.FromArgb(29, 36, 48);
         public static readonly Color Muted = Color.FromArgb(102, 112, 133);
         public static readonly Color Line = Color.FromArgb(217, 222, 231);

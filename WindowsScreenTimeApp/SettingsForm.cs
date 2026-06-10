@@ -18,7 +18,7 @@ public sealed class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(500, 410);
+        ClientSize = new Size(540, 480);
         BackColor = Color.FromArgb(243, 244, 248);
         Font = new Font("Microsoft YaHei UI", 9F);
         Icon = Owner?.Icon ?? Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
@@ -37,9 +37,9 @@ public sealed class SettingsForm : Form
             Padding = new Padding(20),
             BackColor = BackColor
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
         Controls.Add(root);
 
         root.Controls.Add(new Label
@@ -55,16 +55,18 @@ public sealed class SettingsForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
-            RowCount = 7,
+            RowCount = 8,
             BackColor = Color.White,
             Padding = new Padding(16)
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
-        for (var i = 0; i < 7; i++)
+        for (var i = 0; i < 6; i++)
         {
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
         }
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         root.Controls.Add(panel, 0, 1);
 
         AddNumberRow(panel, 0, "\u91c7\u6837\u95f4\u9694\uff08\u79d2\uff09", _sampleSeconds, 1, 60);
@@ -79,33 +81,44 @@ public sealed class SettingsForm : Form
             Dock = DockStyle.Fill,
             Text = "\u8bbe\u7f6e\u4f1a\u4fdd\u5b58\u5728\u5f53\u524d\u7528\u6237\u7684\u672c\u5730\u5e94\u7528\u6570\u636e\u76ee\u5f55\u3002",
             ForeColor = Color.FromArgb(102, 112, 133),
-            TextAlign = ContentAlignment.MiddleLeft
+            TextAlign = ContentAlignment.TopLeft,
+            AutoEllipsis = true,
+            Padding = new Padding(0, 10, 0, 0)
         };
         panel.Controls.Add(hint, 0, 6);
         panel.SetColumnSpan(hint, 2);
 
-        var buttons = new FlowLayoutPanel
+        var buttonHost = new Panel
         {
             Dock = DockStyle.Fill,
+            BackColor = BackColor,
+            Padding = new Padding(0, 14, 4, 10)
+        };
+        var buttons = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            Width = 198,
             FlowDirection = FlowDirection.RightToLeft,
             BackColor = BackColor,
-            Padding = new Padding(0, 14, 0, 0)
+            WrapContents = false
         };
         var ok = MakeButton("\u4fdd\u5b58", DialogResult.OK);
         var cancel = MakeButton("\u53d6\u6d88", DialogResult.Cancel);
         ok.Click += (_, _) => SaveValues();
         buttons.Controls.Add(ok);
         buttons.Controls.Add(cancel);
+        buttonHost.Controls.Add(buttons);
         AcceptButton = ok;
         CancelButton = cancel;
-        root.Controls.Add(buttons, 0, 2);
+        root.Controls.Add(buttonHost, 0, 2);
     }
 
     private static Button MakeButton(string text, DialogResult result) => new()
     {
         Text = text,
         Width = 92,
-        Height = 32,
+        Height = 34,
+        Margin = new Padding(6, 0, 0, 0),
         DialogResult = result,
         FlatStyle = FlatStyle.System
     };
