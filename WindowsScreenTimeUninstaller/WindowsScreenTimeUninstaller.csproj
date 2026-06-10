@@ -9,7 +9,7 @@
     <AssemblyName>WindowsScreenTimeUninstall</AssemblyName>
     <ApplicationIcon>..\WindowsScreenTimeApp\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Authors>哈呼呼吗</Authors>
   </PropertyGroup>
 
