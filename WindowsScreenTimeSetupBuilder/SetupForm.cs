@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 
 namespace WindowsScreenTimeSetupBuilder;
 
@@ -8,6 +9,9 @@ public sealed class SetupForm : Form
 {
     private const string AppName = "Windows Screen Time";
     private const string FolderName = "WindowsScreenTime";
+    private const string AppVersion = "1.3.0";
+    private const string Publisher = "哈呼呼吗";
+    private const string RegistryKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\WindowsScreenTime";
 
     private readonly TextBox _installPath = new();
     private readonly ProgressBar _progress = new();
@@ -56,7 +60,23 @@ public sealed class SetupForm : Form
             Padding = new Padding(24)
         };
 
-        var title = new Label
+        panel.Controls.Add(new Label
+        {
+            Dock = DockStyle.Bottom,
+            Height = 72,
+            Text = $"v{AppVersion}\r\n作者：{Publisher}",
+            ForeColor = Color.FromArgb(148, 163, 184),
+            TextAlign = ContentAlignment.BottomLeft
+        });
+        panel.Controls.Add(new Label
+        {
+            Dock = DockStyle.Top,
+            Height = 120,
+            Text = "安装到 C 盘 Program Files。\r\n会显示在 Windows 程序和功能中，可从系统设置卸载。",
+            ForeColor = Color.FromArgb(203, 213, 225),
+            TextAlign = ContentAlignment.TopLeft
+        });
+        panel.Controls.Add(new Label
         {
             Dock = DockStyle.Top,
             Height = 96,
@@ -64,26 +84,7 @@ public sealed class SetupForm : Form
             Font = new Font(Font.FontFamily, 20F, FontStyle.Bold),
             ForeColor = Color.White,
             TextAlign = ContentAlignment.MiddleLeft
-        };
-        var desc = new Label
-        {
-            Dock = DockStyle.Top,
-            Height = 120,
-            Text = "安装或更新应用。\r\n旧版本数据会保留在本地用户数据目录。",
-            ForeColor = Color.FromArgb(203, 213, 225),
-            TextAlign = ContentAlignment.TopLeft
-        };
-        var version = new Label
-        {
-            Dock = DockStyle.Bottom,
-            Height = 72,
-            Text = "v1.3.0\r\n作者：哈呼呼吗",
-            ForeColor = Color.FromArgb(148, 163, 184),
-            TextAlign = ContentAlignment.BottomLeft
-        };
-        panel.Controls.Add(version);
-        panel.Controls.Add(desc);
-        panel.Controls.Add(title);
+        });
         return panel;
     }
 
@@ -203,24 +204,29 @@ public sealed class SetupForm : Form
 
                 UpdateProgress(28, "正在复制程序文件...");
                 Extract("payload.WindowsScreenTime.exe", Path.Combine(installDir, "WindowsScreenTime.exe"));
+                Extract("payload.WindowsScreenTimeUninstall.exe", Path.Combine(installDir, "WindowsScreenTimeUninstall.exe"));
                 Extract("payload.app.ico", Path.Combine(installDir, "app.ico"));
                 Extract("payload.app-icon.png", Path.Combine(installDir, "app-icon.png"));
                 Extract("payload.README.md", Path.Combine(installDir, "README.md"));
-                Extract("payload.uninstall.cmd", Path.Combine(installDir, "uninstall.cmd"));
 
-                UpdateProgress(70, "正在创建快捷方式...");
                 var exePath = Path.Combine(installDir, "WindowsScreenTime.exe");
+                var uninstallerPath = Path.Combine(installDir, "WindowsScreenTimeUninstall.exe");
                 var iconPath = Path.Combine(installDir, "app.ico");
+
+                UpdateProgress(58, "正在创建快捷方式...");
                 CreateShortcut(
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Windows Screen Time.lnk"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), "Windows Screen Time.lnk"),
                     exePath,
                     installDir,
                     iconPath);
                 CreateShortcut(
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Windows Screen Time.lnk"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), "Windows Screen Time.lnk"),
                     exePath,
                     installDir,
                     iconPath);
+
+                UpdateProgress(74, "正在注册卸载信息...");
+                RegisterUninstallInfo(installDir, exePath, uninstallerPath, iconPath);
 
                 UpdateProgress(92, "正在启动应用...");
                 Process.Start(new ProcessStartInfo
@@ -232,7 +238,7 @@ public sealed class SetupForm : Form
             });
 
             UpdateProgress(100, "安装/更新完成。旧版本数据已保留。");
-            MessageBox.Show("安装/更新完成。", AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("安装/更新完成。你可以在 Windows 程序和功能中卸载此程序。", AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
             Close();
         }
         catch (Exception ex)
@@ -277,7 +283,7 @@ public sealed class SetupForm : Form
     }
 
     private static string DefaultInstallDir() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", FolderName);
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), FolderName);
 
     private static void StopRunningApp()
     {
@@ -296,6 +302,36 @@ public sealed class SetupForm : Form
             {
                 // File replacement will surface a clear error if the old app is still locked.
             }
+        }
+    }
+
+    private static void RegisterUninstallInfo(string installDir, string exePath, string uninstallerPath, string iconPath)
+    {
+        using var key = Registry.LocalMachine.CreateSubKey(RegistryKeyPath, true)
+            ?? throw new InvalidOperationException("无法写入卸载注册表。");
+        key.SetValue("DisplayName", AppName);
+        key.SetValue("DisplayVersion", AppVersion);
+        key.SetValue("Publisher", Publisher);
+        key.SetValue("InstallLocation", installDir);
+        key.SetValue("DisplayIcon", iconPath);
+        key.SetValue("UninstallString", $"\"{uninstallerPath}\"");
+        key.SetValue("QuietUninstallString", $"\"{uninstallerPath}\" /quiet");
+        key.SetValue("URLInfoAbout", "https://github.com/ju070322/WindowsScreenTime");
+        key.SetValue("NoModify", 1, RegistryValueKind.DWord);
+        key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+        key.SetValue("EstimatedSize", EstimateInstalledSizeKb(installDir), RegistryValueKind.DWord);
+    }
+
+    private static int EstimateInstalledSizeKb(string installDir)
+    {
+        try
+        {
+            return (int)(Directory.EnumerateFiles(installDir, "*", SearchOption.AllDirectories)
+                .Sum(path => new FileInfo(path).Length) / 1024);
+        }
+        catch
+        {
+            return 0;
         }
     }
 

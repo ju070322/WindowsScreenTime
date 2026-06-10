@@ -8,6 +8,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>WindowsScreenTimeSetup</AssemblyName>
     <ApplicationIcon>..\WindowsScreenTimeApp\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>1.3.0</Version>
     <Authors>哈呼呼吗</Authors>
     <RepositoryUrl>https://github.com/ju070322/WindowsScreenTime</RepositoryUrl>
@@ -15,10 +16,10 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\WindowsScreenTimeApp\package\WindowsScreenTime.exe" LogicalName="payload.WindowsScreenTime.exe" />
+    <EmbeddedResource Include="..\WindowsScreenTimeApp\package\WindowsScreenTimeUninstall.exe" LogicalName="payload.WindowsScreenTimeUninstall.exe" />
     <EmbeddedResource Include="..\WindowsScreenTimeApp\package\app.ico" LogicalName="payload.app.ico" />
     <EmbeddedResource Include="..\WindowsScreenTimeApp\package\app-icon.png" LogicalName="payload.app-icon.png" />
     <EmbeddedResource Include="..\WindowsScreenTimeApp\package\README.md" LogicalName="payload.README.md" />
-    <EmbeddedResource Include="..\WindowsScreenTimeApp\package\uninstall.cmd" LogicalName="payload.uninstall.cmd" />
   </ItemGroup>
 
 </Project>

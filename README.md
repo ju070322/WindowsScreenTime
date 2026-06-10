@@ -14,6 +14,8 @@ Windows Screen Time 是一个 Windows 桌面屏幕使用时间统计工具。
 - 支持开机自启、启动后最小化、空闲判定、采样间隔等设置。
 - 支持导出和导入 `.wstdata` 数据文件。
 - 安装版支持覆盖更新，并保留旧版本数据。
+- 安装版默认安装到 `C:\Program Files\WindowsScreenTime`，并注册到 Windows 程序和功能。
+- 安装目录包含独立卸载程序 `WindowsScreenTimeUninstall.exe`。
 
 ## 数据位置
 

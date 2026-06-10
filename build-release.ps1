@@ -22,6 +22,16 @@ foreach ($name in @("WindowsScreenTime.exe", "app.ico", "app-icon.png", "README.
   Copy-Item -Force -LiteralPath (Join-Path $appOut $name) -Destination $packageDir
 }
 
+dotnet publish (Join-Path $root "WindowsScreenTimeUninstaller\WindowsScreenTimeUninstaller.csproj") `
+  -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true `
+  -p:EnableCompressionInSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -o (Join-Path $outputs "WindowsScreenTimeUninstaller")
+
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $outputs "WindowsScreenTimeUninstaller\WindowsScreenTimeUninstall.pdb")
+Copy-Item -Force -LiteralPath (Join-Path $outputs "WindowsScreenTimeUninstaller\WindowsScreenTimeUninstall.exe") -Destination $packageDir
+
 $zip = Join-Path $outputs "WindowsScreenTime-Portable.zip"
 Remove-Item -Force -ErrorAction SilentlyContinue $zip
 Compress-Archive -Path (Join-Path $portableDir "*") -DestinationPath $zip -Force
