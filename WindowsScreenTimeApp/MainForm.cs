@@ -14,21 +14,21 @@ public sealed class MainForm : Form
     private readonly Label _foregroundValue = new();
     private readonly Label _backgroundValue = new();
     private readonly Label _currentValue = new();
-    private readonly Label _periodLabel = new();
+    private readonly Label _addressLabel = new();
     private readonly BarChartPanel _chart = new();
     private readonly ListView _usageList = new();
     private readonly Label _emptyState = new();
-    private readonly Button _dayButton;
-    private readonly Button _weekButton;
+    private readonly Button _todayNav;
+    private readonly Button _weekNav;
     private bool _reallyExit;
 
     public MainForm()
     {
         Text = $"Windows Screen Time {AppInfo.Version}";
-        MinimumSize = new Size(1040, 760);
-        Size = new Size(1220, 820);
+        MinimumSize = new Size(1100, 760);
+        Size = new Size(1260, 840);
         StartPosition = FormStartPosition.CenterScreen;
-        BackColor = Theme.Page;
+        BackColor = Theme.Window;
         Font = new Font("Microsoft YaHei UI", 9F);
         _appIcon = LoadAppIcon();
         Icon = _appIcon;
@@ -38,8 +38,8 @@ public sealed class MainForm : Form
         _tracker.Updated += (_, _) => RefreshData();
         _notifyIcon = CreateNotifyIcon();
 
-        _dayButton = MakeButton("今日", (_, _) => SetPeriod(UsagePeriod.Day), true);
-        _weekButton = MakeButton("本周", (_, _) => SetPeriod(UsagePeriod.Week), false);
+        _todayNav = MakeNavButton("今日使用时间", (_, _) => SetPeriod(UsagePeriod.Day));
+        _weekNav = MakeNavButton("本周使用时间", (_, _) => SetPeriod(UsagePeriod.Week));
 
         BuildLayout();
         _tracker.Start();
@@ -77,77 +77,134 @@ public sealed class MainForm : Form
 
     private void BuildLayout()
     {
-        var root = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 5,
-            Padding = new Padding(24),
-            BackColor = Theme.Page
-        };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 44));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 46));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
-        Controls.Add(root);
-
-        root.Controls.Add(BuildHeader(), 0, 0);
-        root.Controls.Add(BuildMetrics(), 0, 1);
-        root.Controls.Add(BuildChartPanel(), 0, 2);
-        root.Controls.Add(BuildUsagePanel(), 0, 3);
-        root.Controls.Add(BuildFooter(), 0, 4);
-    }
-
-    private Control BuildHeader()
-    {
-        var header = new TableLayoutPanel
+        var shell = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
             RowCount = 1,
-            BackColor = Theme.Page
+            BackColor = Theme.Window
         };
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 604));
+        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 238));
+        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        Controls.Add(shell);
 
-        var titleStack = new FlowLayoutPanel
+        shell.Controls.Add(BuildSidebar(), 0, 0);
+        shell.Controls.Add(BuildContent(), 1, 0);
+    }
+
+    private Control BuildSidebar()
+    {
+        var sidebar = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Sidebar,
+            Padding = new Padding(14, 18, 14, 14)
+        };
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4,
+            BackColor = Theme.Sidebar
+        };
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 184));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96));
+        sidebar.Controls.Add(layout);
+
+        var brand = new Label
+        {
+            Dock = DockStyle.Fill,
+            Text = "Windows\r\nScreen Time",
+            Font = new Font(Font.FontFamily, 15F, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+        layout.Controls.Add(brand, 0, 0);
+
+        var nav = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
-            BackColor = Theme.Page
+            BackColor = Theme.Sidebar
         };
-        titleStack.Controls.Add(new Label
-        {
-            AutoSize = true,
-            Text = "Windows Screen Time",
-            Font = new Font(Font.FontFamily, 22F, FontStyle.Bold),
-            ForeColor = Theme.Text,
-            Margin = new Padding(0, 0, 0, 4)
-        });
-        _periodLabel.AutoSize = true;
-        _periodLabel.ForeColor = Theme.Muted;
-        titleStack.Controls.Add(_periodLabel);
+        nav.Controls.Add(_todayNav);
+        nav.Controls.Add(_weekNav);
+        nav.Controls.Add(MakeNavButton("导出数据", (_, _) => ExportData()));
+        nav.Controls.Add(MakeNavButton("导入数据", (_, _) => ImportData()));
+        nav.Controls.Add(MakeNavButton("设置", (_, _) => OpenSettings()));
+        layout.Controls.Add(nav, 0, 1);
 
-        var actions = new FlowLayoutPanel
+        var footer = new Label
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
-            BackColor = Theme.Page,
-            Padding = new Padding(0, 12, 0, 0)
+            Text = $"版本 {AppInfo.Version}\r\n作者：{AppInfo.Author}\r\n{AppInfo.ProjectUrl}",
+            ForeColor = Theme.Muted,
+            TextAlign = ContentAlignment.BottomLeft
         };
-        actions.Controls.Add(MakeButton("设置", (_, _) => OpenSettings(), true));
-        actions.Controls.Add(MakeButton("导入", (_, _) => ImportData(), false));
-        actions.Controls.Add(MakeButton("导出", (_, _) => ExportData(), false));
-        actions.Controls.Add(MakeButton("重置", (_, _) => ResetData(), false));
-        actions.Controls.Add(_weekButton);
-        actions.Controls.Add(_dayButton);
+        layout.Controls.Add(footer, 0, 3);
+        return sidebar;
+    }
 
-        header.Controls.Add(titleStack, 0, 0);
-        header.Controls.Add(actions, 1, 0);
-        return header;
+    private Control BuildContent()
+    {
+        var content = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4,
+            Padding = new Padding(18),
+            BackColor = Theme.Window
+        };
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 44));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 56));
+
+        content.Controls.Add(BuildCommandBar(), 0, 0);
+        content.Controls.Add(BuildMetrics(), 0, 1);
+        content.Controls.Add(BuildChartPanel(), 0, 2);
+        content.Controls.Add(BuildUsagePanel(), 0, 3);
+        return content;
+    }
+
+    private Control BuildCommandBar()
+    {
+        var bar = MakePanel();
+        bar.Padding = new Padding(10, 8, 10, 8);
+        bar.Margin = new Padding(0, 0, 0, 14);
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 4,
+            RowCount = 1,
+            BackColor = Color.White
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 152));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 118));
+        bar.Controls.Add(layout);
+
+        var arrows = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.White, WrapContents = false };
+        arrows.Controls.Add(MakeIconButton("<", (_, _) => SetPeriod(UsagePeriod.Day)));
+        arrows.Controls.Add(MakeIconButton(">", (_, _) => SetPeriod(UsagePeriod.Week)));
+        layout.Controls.Add(arrows, 0, 0);
+
+        _addressLabel.Dock = DockStyle.Fill;
+        _addressLabel.BackColor = Theme.Address;
+        _addressLabel.ForeColor = Theme.Text;
+        _addressLabel.TextAlign = ContentAlignment.MiddleLeft;
+        _addressLabel.Padding = new Padding(12, 0, 0, 0);
+        layout.Controls.Add(_addressLabel, 1, 0);
+
+        layout.Controls.Add(MakeButton("打开项目", (_, _) => OpenProjectUrl(), false), 2, 0);
+        layout.Controls.Add(MakeButton("重置", (_, _) => ResetData(), false), 3, 0);
+        return bar;
     }
 
     private Control BuildMetrics()
@@ -157,7 +214,7 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 4,
             RowCount = 1,
-            BackColor = Theme.Page
+            BackColor = Theme.Window
         };
         for (var i = 0; i < 4; i++)
         {
@@ -174,7 +231,7 @@ public sealed class MainForm : Form
     private Control BuildChartPanel()
     {
         var panel = MakePanel();
-        panel.Margin = new Padding(0, 0, 0, 18);
+        panel.Margin = new Padding(0, 0, 0, 16);
         panel.Padding = new Padding(18);
         _chart.Dock = DockStyle.Fill;
         panel.Controls.Add(_chart);
@@ -217,7 +274,7 @@ public sealed class MainForm : Form
         _usageList.Columns.Add("后台", 110);
         _usageList.Columns.Add("总时间", 110);
         _usageList.Columns.Add("占比", 80);
-        _usageList.Columns.Add("最近窗口标题", 510);
+        _usageList.Columns.Add("最近窗口标题", 520);
 
         _emptyState.Dock = DockStyle.Fill;
         _emptyState.Text = "统计几秒后会显示应用明细。";
@@ -233,36 +290,10 @@ public sealed class MainForm : Form
         return panel;
     }
 
-    private Control BuildFooter()
-    {
-        var footer = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 2,
-            RowCount = 1,
-            BackColor = Theme.Page
-        };
-        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 330));
-
-        var author = new Label
-        {
-            Dock = DockStyle.Fill,
-            Text = $"版本 {AppInfo.Version}  ·  作者：{AppInfo.Author}\r\n项目地址：{AppInfo.ProjectUrl}",
-            ForeColor = Theme.Muted,
-            TextAlign = ContentAlignment.MiddleLeft
-        };
-        var openProject = MakeButton("打开项目", (_, _) => OpenProjectUrl(), false);
-        openProject.Dock = DockStyle.Right;
-        footer.Controls.Add(author, 0, 0);
-        footer.Controls.Add(openProject, 1, 0);
-        return footer;
-    }
-
     private Control MakeMetric(string labelText, Label valueLabel)
     {
         var panel = MakePanel();
-        panel.Margin = new Padding(0, 0, 12, 18);
+        panel.Margin = new Padding(0, 0, 12, 16);
         panel.Padding = new Padding(16, 12, 16, 12);
 
         var label = new Label
@@ -309,6 +340,33 @@ public sealed class MainForm : Form
         return button;
     }
 
+    private static Button MakeIconButton(string text, EventHandler onClick)
+    {
+        var button = MakeButton(text, onClick, false);
+        button.Width = 34;
+        button.Margin = new Padding(0, 0, 8, 0);
+        return button;
+    }
+
+    private static Button MakeNavButton(string text, EventHandler onClick)
+    {
+        var button = new Button
+        {
+            Text = text,
+            Width = 202,
+            Height = 34,
+            Margin = new Padding(0, 0, 0, 6),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(14, 0, 0, 0),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Sidebar,
+            ForeColor = Theme.Text
+        };
+        button.FlatAppearance.BorderSize = 0;
+        button.Click += onClick;
+        return button;
+    }
+
     private NotifyIcon CreateNotifyIcon()
     {
         var menu = new ContextMenuStrip();
@@ -337,11 +395,11 @@ public sealed class MainForm : Form
         _foregroundValue.Text = UiFormat.Duration(_tracker.ForegroundTotal);
         _backgroundValue.Text = UiFormat.Duration(_tracker.BackgroundTotal);
         _currentValue.Text = _tracker.Current.AppName;
-        _periodLabel.Text = _tracker.Period == UsagePeriod.Day
-            ? "查看范围：今日使用时间"
-            : "查看范围：本周使用时间";
+        _addressLabel.Text = _tracker.Period == UsagePeriod.Day
+            ? "Windows Screen Time  >  今日使用时间"
+            : "Windows Screen Time  >  本周使用时间";
         _notifyIcon.Text = ClipNotifyText($"Windows Screen Time\n当前：{_tracker.Current.AppName}\n总计：{UiFormat.Duration(_tracker.ActiveTotal)}");
-        RefreshPeriodButtons();
+        RefreshNavState();
 
         var items = _tracker.Items
             .Where(item => _settings.IncludeIdleInList || !item.IsIdle)
@@ -376,17 +434,16 @@ public sealed class MainForm : Form
         _tracker.SetPeriod(period);
     }
 
-    private void RefreshPeriodButtons()
+    private void RefreshNavState()
     {
-        StyleToggle(_dayButton, _tracker.Period == UsagePeriod.Day);
-        StyleToggle(_weekButton, _tracker.Period == UsagePeriod.Week);
+        StyleNav(_todayNav, _tracker.Period == UsagePeriod.Day);
+        StyleNav(_weekNav, _tracker.Period == UsagePeriod.Week);
     }
 
-    private static void StyleToggle(Button button, bool active)
+    private static void StyleNav(Button button, bool active)
     {
-        button.BackColor = active ? Theme.Accent : Color.White;
-        button.ForeColor = active ? Color.White : Theme.Text;
-        button.FlatAppearance.BorderColor = active ? Theme.Accent : Theme.Line;
+        button.BackColor = active ? Theme.NavActive : Theme.Sidebar;
+        button.ForeColor = Theme.Text;
     }
 
     private void ExportData()
@@ -535,7 +592,10 @@ public sealed class MainForm : Form
 
     private static class Theme
     {
-        public static readonly Color Page = Color.FromArgb(243, 244, 248);
+        public static readonly Color Window = Color.FromArgb(243, 244, 248);
+        public static readonly Color Sidebar = Color.FromArgb(248, 249, 252);
+        public static readonly Color NavActive = Color.FromArgb(230, 238, 255);
+        public static readonly Color Address = Color.FromArgb(247, 248, 251);
         public static readonly Color Text = Color.FromArgb(29, 36, 48);
         public static readonly Color Muted = Color.FromArgb(102, 112, 133);
         public static readonly Color Line = Color.FromArgb(217, 222, 231);
