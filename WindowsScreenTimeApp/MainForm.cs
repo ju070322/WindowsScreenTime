@@ -25,8 +25,8 @@ public sealed class MainForm : Form
     public MainForm()
     {
         Text = $"Windows Screen Time {AppInfo.Version}";
-        MinimumSize = new Size(1100, 760);
-        Size = new Size(1260, 840);
+        MinimumSize = new Size(1120, 760);
+        Size = new Size(1280, 840);
         StartPosition = FormStartPosition.CenterScreen;
         BackColor = Theme.Window;
         Font = new Font("Microsoft YaHei UI", 9F);
@@ -38,8 +38,8 @@ public sealed class MainForm : Form
         _tracker.Updated += (_, _) => RefreshData();
         _notifyIcon = CreateNotifyIcon();
 
-        _todayNav = MakeNavButton("今日使用时间", (_, _) => SetPeriod(UsagePeriod.Day));
-        _weekNav = MakeNavButton("本周使用时间", (_, _) => SetPeriod(UsagePeriod.Week));
+        _todayNav = MakeNavButton("\u4eca\u65e5\u4f7f\u7528\u65f6\u95f4", (_, _) => SetPeriod(UsagePeriod.Day));
+        _weekNav = MakeNavButton("\u672c\u5468\u4f7f\u7528\u65f6\u95f4", (_, _) => SetPeriod(UsagePeriod.Week));
 
         BuildLayout();
         _tracker.Start();
@@ -84,7 +84,7 @@ public sealed class MainForm : Form
             RowCount = 1,
             BackColor = Theme.Window
         };
-        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 238));
+        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 248));
         shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         Controls.Add(shell);
 
@@ -98,55 +98,73 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             BackColor = Theme.Sidebar,
-            Padding = new Padding(14, 18, 14, 14)
+            Padding = new Padding(16, 18, 16, 14)
         };
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 5,
             BackColor = Theme.Sidebar
         };
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 184));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 142));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 178));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
         sidebar.Controls.Add(layout);
 
-        var brand = new Label
+        layout.Controls.Add(new Label
         {
             Dock = DockStyle.Fill,
             Text = "Windows\r\nScreen Time",
             Font = new Font(Font.FontFamily, 15F, FontStyle.Bold),
             ForeColor = Theme.Text,
             TextAlign = ContentAlignment.MiddleLeft
-        };
-        layout.Controls.Add(brand, 0, 0);
+        }, 0, 0);
 
-        var nav = new FlowLayoutPanel
+        var viewSection = MakeSidebarSection("\u89c6\u56fe");
+        viewSection.Controls.Add(_weekNav);
+        viewSection.Controls.Add(_todayNav);
+        layout.Controls.Add(viewSection, 0, 1);
+
+        var actionSection = MakeSidebarSection("\u64cd\u4f5c");
+        actionSection.Controls.Add(MakeNavButton("\u8bbe\u7f6e", (_, _) => OpenSettings()));
+        actionSection.Controls.Add(MakeNavButton("\u5bfc\u5165\u6570\u636e", (_, _) => ImportData()));
+        actionSection.Controls.Add(MakeNavButton("\u5bfc\u51fa\u6570\u636e", (_, _) => ExportData()));
+        actionSection.Controls.Add(MakeNavButton("\u91cd\u7f6e\u7edf\u8ba1", (_, _) => ResetData()));
+        layout.Controls.Add(actionSection, 0, 2);
+
+        layout.Controls.Add(new Label
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            BackColor = Theme.Sidebar
-        };
-        nav.Controls.Add(_todayNav);
-        nav.Controls.Add(_weekNav);
-        nav.Controls.Add(MakeNavButton("导出数据", (_, _) => ExportData()));
-        nav.Controls.Add(MakeNavButton("导入数据", (_, _) => ImportData()));
-        nav.Controls.Add(MakeNavButton("设置", (_, _) => OpenSettings()));
-        layout.Controls.Add(nav, 0, 1);
-
-        var footer = new Label
-        {
-            Dock = DockStyle.Fill,
-            Text = $"版本 {AppInfo.Version}\r\n作者：{AppInfo.Author}\r\n{AppInfo.ProjectUrl}",
+            Text = $"\u7248\u672c {AppInfo.Version}\r\n\u4f5c\u8005\uff1a{AppInfo.Author}\r\n{AppInfo.ProjectUrl}",
             ForeColor = Theme.Muted,
             TextAlign = ContentAlignment.BottomLeft
-        };
-        layout.Controls.Add(footer, 0, 3);
+        }, 0, 4);
         return sidebar;
+    }
+
+    private static FlowLayoutPanel MakeSidebarSection(string title)
+    {
+        var section = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.BottomUp,
+            WrapContents = false,
+            BackColor = Theme.Sidebar,
+            Padding = new Padding(0, 24, 0, 0)
+        };
+        section.Controls.Add(new Label
+        {
+            Width = 206,
+            Height = 24,
+            Text = title,
+            ForeColor = Theme.Muted,
+            TextAlign = ContentAlignment.MiddleLeft
+        });
+        return section;
     }
 
     private Control BuildContent()
@@ -159,7 +177,7 @@ public sealed class MainForm : Form
             Padding = new Padding(18),
             BackColor = Theme.Window
         };
-        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
         content.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 44));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 56));
@@ -180,14 +198,15 @@ public sealed class MainForm : Form
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 4,
+            ColumnCount = 5,
             RowCount = 1,
             BackColor = Color.White
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 152));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 118));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
         bar.Controls.Add(layout);
 
         var arrows = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.White, WrapContents = false };
@@ -202,8 +221,9 @@ public sealed class MainForm : Form
         _addressLabel.Padding = new Padding(12, 0, 0, 0);
         layout.Controls.Add(_addressLabel, 1, 0);
 
-        layout.Controls.Add(MakeButton("打开项目", (_, _) => OpenProjectUrl(), false), 2, 0);
-        layout.Controls.Add(MakeButton("重置", (_, _) => ResetData(), false), 3, 0);
+        layout.Controls.Add(MakeButton("\u5bfc\u51fa", (_, _) => ExportData(), false), 2, 0);
+        layout.Controls.Add(MakeButton("\u5bfc\u5165", (_, _) => ImportData(), false), 3, 0);
+        layout.Controls.Add(MakeButton("\u6253\u5f00\u9879\u76ee", (_, _) => OpenProjectUrl(), false), 4, 0);
         return bar;
     }
 
@@ -221,10 +241,10 @@ public sealed class MainForm : Form
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
         }
 
-        grid.Controls.Add(MakeMetric("总时间", _totalValue), 0, 0);
-        grid.Controls.Add(MakeMetric("前台时间", _foregroundValue), 1, 0);
-        grid.Controls.Add(MakeMetric("后台时间", _backgroundValue), 2, 0);
-        grid.Controls.Add(MakeMetric("当前应用", _currentValue), 3, 0);
+        grid.Controls.Add(MakeMetric("\u603b\u65f6\u95f4", _totalValue), 0, 0);
+        grid.Controls.Add(MakeMetric("\u524d\u53f0\u65f6\u95f4", _foregroundValue), 1, 0);
+        grid.Controls.Add(MakeMetric("\u540e\u53f0\u65f6\u95f4", _backgroundValue), 2, 0);
+        grid.Controls.Add(MakeMetric("\u5f53\u524d\u5e94\u7528", _currentValue), 3, 0);
         return grid;
     }
 
@@ -256,7 +276,7 @@ public sealed class MainForm : Form
         layout.Controls.Add(new Label
         {
             Dock = DockStyle.Fill,
-            Text = "应用明细",
+            Text = "\u5e94\u7528\u660e\u7ec6",
             Font = new Font(Font.FontFamily, 13F, FontStyle.Bold),
             ForeColor = Theme.Text,
             TextAlign = ContentAlignment.MiddleLeft
@@ -269,15 +289,15 @@ public sealed class MainForm : Form
         _usageList.BorderStyle = BorderStyle.None;
         _usageList.BackColor = Color.White;
         _usageList.ForeColor = Theme.Text;
-        _usageList.Columns.Add("应用", 210);
-        _usageList.Columns.Add("前台", 110);
-        _usageList.Columns.Add("后台", 110);
-        _usageList.Columns.Add("总时间", 110);
-        _usageList.Columns.Add("占比", 80);
-        _usageList.Columns.Add("最近窗口标题", 520);
+        _usageList.Columns.Add("\u5e94\u7528", 210);
+        _usageList.Columns.Add("\u524d\u53f0", 110);
+        _usageList.Columns.Add("\u540e\u53f0", 110);
+        _usageList.Columns.Add("\u603b\u65f6\u95f4", 110);
+        _usageList.Columns.Add("\u5360\u6bd4", 80);
+        _usageList.Columns.Add("\u6700\u8fd1\u7a97\u53e3\u6807\u9898", 520);
 
         _emptyState.Dock = DockStyle.Fill;
-        _emptyState.Text = "统计几秒后会显示应用明细。";
+        _emptyState.Text = "\u7edf\u8ba1\u51e0\u79d2\u540e\u4f1a\u663e\u793a\u5e94\u7528\u660e\u7ec6\u3002";
         _emptyState.ForeColor = Theme.Muted;
         _emptyState.TextAlign = ContentAlignment.MiddleCenter;
 
@@ -327,7 +347,7 @@ public sealed class MainForm : Form
         var button = new Button
         {
             Text = text,
-            Width = 96,
+            Dock = DockStyle.Fill,
             Height = 34,
             Margin = new Padding(8, 0, 0, 0),
             FlatStyle = FlatStyle.Flat,
@@ -342,9 +362,19 @@ public sealed class MainForm : Form
 
     private static Button MakeIconButton(string text, EventHandler onClick)
     {
-        var button = MakeButton(text, onClick, false);
-        button.Width = 34;
-        button.Margin = new Padding(0, 0, 8, 0);
+        var button = new Button
+        {
+            Text = text,
+            Width = 34,
+            Height = 34,
+            Margin = new Padding(0, 0, 8, 0),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Color.White,
+            ForeColor = Theme.Text
+        };
+        button.FlatAppearance.BorderColor = Theme.Line;
+        button.FlatAppearance.BorderSize = 1;
+        button.Click += onClick;
         return button;
     }
 
@@ -353,9 +383,9 @@ public sealed class MainForm : Form
         var button = new Button
         {
             Text = text,
-            Width = 202,
-            Height = 34,
-            Margin = new Padding(0, 0, 0, 6),
+            Width = 206,
+            Height = 36,
+            Margin = new Padding(0, 0, 0, 8),
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(14, 0, 0, 0),
             FlatStyle = FlatStyle.Flat,
@@ -370,13 +400,13 @@ public sealed class MainForm : Form
     private NotifyIcon CreateNotifyIcon()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add("打开", null, (_, _) => ShowFromTray());
-        menu.Items.Add("导出数据", null, (_, _) => ExportData());
-        menu.Items.Add("导入数据", null, (_, _) => ImportData());
-        menu.Items.Add("设置", null, (_, _) => OpenSettings());
-        menu.Items.Add("重置统计", null, (_, _) => ResetData());
+        menu.Items.Add("\u6253\u5f00", null, (_, _) => ShowFromTray());
+        menu.Items.Add("\u5bfc\u51fa\u6570\u636e", null, (_, _) => ExportData());
+        menu.Items.Add("\u5bfc\u5165\u6570\u636e", null, (_, _) => ImportData());
+        menu.Items.Add("\u8bbe\u7f6e", null, (_, _) => OpenSettings());
+        menu.Items.Add("\u91cd\u7f6e\u7edf\u8ba1", null, (_, _) => ResetData());
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("退出", null, (_, _) => ExitApplication());
+        menu.Items.Add("\u9000\u51fa", null, (_, _) => ExitApplication());
 
         var icon = new NotifyIcon
         {
@@ -396,9 +426,9 @@ public sealed class MainForm : Form
         _backgroundValue.Text = UiFormat.Duration(_tracker.BackgroundTotal);
         _currentValue.Text = _tracker.Current.AppName;
         _addressLabel.Text = _tracker.Period == UsagePeriod.Day
-            ? "Windows Screen Time  >  今日使用时间"
-            : "Windows Screen Time  >  本周使用时间";
-        _notifyIcon.Text = ClipNotifyText($"Windows Screen Time\n当前：{_tracker.Current.AppName}\n总计：{UiFormat.Duration(_tracker.ActiveTotal)}");
+            ? "Windows Screen Time  >  \u4eca\u65e5\u4f7f\u7528\u65f6\u95f4"
+            : "Windows Screen Time  >  \u672c\u5468\u4f7f\u7528\u65f6\u95f4";
+        _notifyIcon.Text = ClipNotifyText($"Windows Screen Time\n\u5f53\u524d\uff1a{_tracker.Current.AppName}\n\u603b\u8ba1\uff1a{UiFormat.Duration(_tracker.ActiveTotal)}");
         RefreshNavState();
 
         var items = _tracker.Items
@@ -450,8 +480,8 @@ public sealed class MainForm : Form
     {
         using var dialog = new SaveFileDialog
         {
-            Title = "导出使用数据",
-            Filter = "Windows Screen Time 数据 (*.wstdata)|*.wstdata|JSON 文件 (*.json)|*.json",
+            Title = "\u5bfc\u51fa\u4f7f\u7528\u6570\u636e",
+            Filter = "Windows Screen Time \u6570\u636e (*.wstdata)|*.wstdata|JSON \u6587\u4ef6 (*.json)|*.json",
             FileName = $"WindowsScreenTime-{DateTime.Now:yyyyMMdd-HHmm}.wstdata"
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -462,11 +492,11 @@ public sealed class MainForm : Form
         try
         {
             _tracker.ExportTo(dialog.FileName, _settings);
-            MessageBox.Show("数据已导出。", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("\u6570\u636e\u5df2\u5bfc\u51fa\u3002", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"导出失败：{ex.Message}", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"\u5bfc\u51fa\u5931\u8d25\uff1a{ex.Message}", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -474,8 +504,8 @@ public sealed class MainForm : Form
     {
         using var dialog = new OpenFileDialog
         {
-            Title = "导入使用数据",
-            Filter = "Windows Screen Time 数据 (*.wstdata;*.json)|*.wstdata;*.json|所有文件 (*.*)|*.*"
+            Title = "\u5bfc\u5165\u4f7f\u7528\u6570\u636e",
+            Filter = "Windows Screen Time \u6570\u636e (*.wstdata;*.json)|*.wstdata;*.json|\u6240\u6709\u6587\u4ef6 (*.*)|*.*"
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
@@ -483,7 +513,7 @@ public sealed class MainForm : Form
         }
 
         var confirm = MessageBox.Show(
-            "导入会把文件中的使用时间合并到当前统计，并继承导入文件里的设置。是否继续？",
+            "\u5bfc\u5165\u4f1a\u628a\u6587\u4ef6\u4e2d\u7684\u4f7f\u7528\u65f6\u95f4\u5408\u5e76\u5230\u5f53\u524d\u7edf\u8ba1\uff0c\u5e76\u7ee7\u627f\u5bfc\u5165\u6587\u4ef6\u91cc\u7684\u8bbe\u7f6e\u3002\u662f\u5426\u7ee7\u7eed\uff1f",
             "Windows Screen Time",
             MessageBoxButtons.OKCancel,
             MessageBoxIcon.Question);
@@ -503,18 +533,18 @@ public sealed class MainForm : Form
                 _tracker.ApplySettings(_settings);
             }
             RefreshData();
-            MessageBox.Show("数据已导入并合并。", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("\u6570\u636e\u5df2\u5bfc\u5165\u5e76\u5408\u5e76\u3002", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"导入失败：{ex.Message}", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"\u5bfc\u5165\u5931\u8d25\uff1a{ex.Message}", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     private void ResetData()
     {
         var confirm = MessageBox.Show(
-            "确定要清空当前累计统计吗？这不会删除导出的备份文件。",
+            "\u786e\u5b9a\u8981\u6e05\u7a7a\u5f53\u524d\u7d2f\u8ba1\u7edf\u8ba1\u5417\uff1f\u8fd9\u4e0d\u4f1a\u5220\u9664\u5bfc\u51fa\u7684\u5907\u4efd\u6587\u4ef6\u3002",
             "Windows Screen Time",
             MessageBoxButtons.OKCancel,
             MessageBoxIcon.Warning);
@@ -541,7 +571,7 @@ public sealed class MainForm : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"保存设置失败：{ex.Message}", "Windows Screen Time",
+            MessageBox.Show($"\u4fdd\u5b58\u8bbe\u7f6e\u5931\u8d25\uff1a{ex.Message}", "Windows Screen Time",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
