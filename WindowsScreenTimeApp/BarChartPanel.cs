@@ -49,11 +49,11 @@ public sealed class BarChartPanel : Control
         using var titleFont = new Font(Font.FontFamily, 13F, FontStyle.Bold);
         using var mutedBrush = new SolidBrush(Color.FromArgb(102, 112, 133));
         using var textBrush = new SolidBrush(ForeColor);
-        e.Graphics.DrawString("使用时间柱状图", titleFont, textBrush, 0, 0);
+        e.Graphics.DrawString("\u5e94\u7528\u4f7f\u7528\u65f6\u95f4\u6392\u884c", titleFont, textBrush, 0, 0);
 
         if (_items.Count == 0)
         {
-            DrawCenteredText(e.Graphics, "统计几秒后会显示柱状图。", bounds, mutedBrush);
+            DrawCenteredText(e.Graphics, "\u7edf\u8ba1\u51e0\u79d2\u540e\u4f1a\u663e\u793a\u67f1\u72b6\u56fe\u3002", bounds, mutedBrush);
             return;
         }
 
@@ -68,7 +68,7 @@ public sealed class BarChartPanel : Control
         using var gridPen = new Pen(Color.FromArgb(232, 236, 244));
         for (var i = 0; i <= 3; i++)
         {
-            var y = plot.Bottom - (plot.Height * i / 3);
+            var y = plot.Bottom - plot.Height * i / 3;
             e.Graphics.DrawLine(gridPen, plot.Left, y, plot.Right, y);
         }
 
@@ -77,19 +77,16 @@ public sealed class BarChartPanel : Control
             var item = _items[index];
             var centerX = plot.Left + slotWidth * index + slotWidth / 2;
             var barHeight = Math.Max(4, (int)(plot.Height * item.Duration.TotalSeconds / maxSeconds));
-            var bar = new Rectangle(
-                centerX - barWidth / 2,
-                plot.Bottom - barHeight,
-                barWidth,
-                barHeight);
+            var bar = new Rectangle(centerX - barWidth / 2, plot.Bottom - barHeight, barWidth, barHeight);
 
             using var fill = new SolidBrush(_palette[index % _palette.Length]);
             using var path = RoundedRect(bar, 7);
             e.Graphics.FillPath(fill, path);
 
-            var duration = UiFormat.Duration(item.Duration);
-            DrawCenteredLine(e.Graphics, duration, Font, textBrush, new Rectangle(centerX - slotWidth / 2, plot.Top - valueHeight, slotWidth, valueHeight));
-            DrawLabel(e.Graphics, item.AppName, new Rectangle(centerX - slotWidth / 2, plot.Bottom + 8, slotWidth, labelHeight), mutedBrush);
+            DrawCenteredLine(e.Graphics, UiFormat.Duration(item.Duration), Font, textBrush,
+                new Rectangle(centerX - slotWidth / 2, plot.Top - valueHeight, slotWidth, valueHeight));
+            DrawLabel(e.Graphics, item.AppName,
+                new Rectangle(centerX - slotWidth / 2, plot.Bottom + 8, slotWidth, labelHeight), mutedBrush);
         }
     }
 

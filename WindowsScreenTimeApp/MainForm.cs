@@ -6,19 +6,29 @@ namespace WindowsScreenTimeApp;
 
 public sealed class MainForm : Form
 {
+    private enum ChartMode
+    {
+        Bar,
+        Ring
+    }
+
     private readonly AppSettings _settings;
     private readonly ActivityTracker _tracker;
     private readonly NotifyIcon _notifyIcon;
     private readonly Icon _appIcon;
-    private readonly Label _totalValue = new();
+    private readonly Label _bootValue = new();
     private readonly Label _foregroundValue = new();
     private readonly Label _backgroundValue = new();
     private readonly Label _currentValue = new();
     private readonly BarChartPanel _chart = new();
+    private readonly RingChartPanel _ringChart = new();
     private readonly ListView _usageList = new();
     private readonly Label _emptyState = new();
     private readonly Button _todayNav;
     private readonly Button _weekNav;
+    private readonly Button _barTab;
+    private readonly Button _ringTab;
+    private ChartMode _chartMode = ChartMode.Bar;
     private bool _reallyExit;
 
     public MainForm()
@@ -39,6 +49,8 @@ public sealed class MainForm : Form
 
         _todayNav = MakeNavButton("\u4eca\u65e5\u4f7f\u7528\u65f6\u95f4", (_, _) => SetPeriod(UsagePeriod.Day));
         _weekNav = MakeNavButton("\u672c\u5468\u4f7f\u7528\u65f6\u95f4", (_, _) => SetPeriod(UsagePeriod.Week));
+        _barTab = MakeTabButton("\u67f1\u72b6\u56fe", (_, _) => SetChartMode(ChartMode.Bar), true);
+        _ringTab = MakeTabButton("\u5706\u73af\u56fe", (_, _) => SetChartMode(ChartMode.Ring), false);
 
         BuildLayout();
         _tracker.Start();
@@ -176,9 +188,9 @@ public sealed class MainForm : Form
             Padding = new Padding(18),
             BackColor = Theme.Window
         };
-        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 44));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 56));
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 48));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 52));
 
         content.Controls.Add(BuildMetrics(), 0, 0);
         content.Controls.Add(BuildChartPanel(), 0, 1);
@@ -200,7 +212,7 @@ public sealed class MainForm : Form
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
         }
 
-        grid.Controls.Add(MakeMetric("\u603b\u65f6\u95f4", _totalValue), 0, 0);
+        grid.Controls.Add(MakeMetric("\u5f00\u673a\u65f6\u95f4", _bootValue), 0, 0);
         grid.Controls.Add(MakeMetric("\u524d\u53f0\u65f6\u95f4", _foregroundValue), 1, 0);
         grid.Controls.Add(MakeMetric("\u540e\u53f0\u65f6\u95f4", _backgroundValue), 2, 0);
         grid.Controls.Add(MakeMetric("\u5f53\u524d\u5e94\u7528", _currentValue), 3, 0);
@@ -211,9 +223,37 @@ public sealed class MainForm : Form
     {
         var panel = MakePanel();
         panel.Margin = new Padding(0, 0, 0, 16);
-        panel.Padding = new Padding(18);
+        panel.Padding = new Padding(18, 14, 18, 18);
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            BackColor = Color.White
+        };
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        var tabs = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.White
+        };
+        tabs.Controls.Add(_barTab);
+        tabs.Controls.Add(_ringTab);
+        layout.Controls.Add(tabs, 0, 0);
+
+        var chartHost = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
         _chart.Dock = DockStyle.Fill;
-        panel.Controls.Add(_chart);
+        _ringChart.Dock = DockStyle.Fill;
+        _ringChart.Visible = false;
+        chartHost.Controls.Add(_ringChart);
+        chartHost.Controls.Add(_chart);
+        layout.Controls.Add(chartHost, 0, 1);
+
+        panel.Controls.Add(layout);
         return panel;
     }
 
@@ -229,7 +269,7 @@ public sealed class MainForm : Form
             RowCount = 2,
             BackColor = Color.White
         };
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         layout.Controls.Add(new Label
@@ -338,6 +378,24 @@ public sealed class MainForm : Form
         return button;
     }
 
+    private static Button MakeTabButton(string text, EventHandler onClick, bool active)
+    {
+        var button = new Button
+        {
+            Text = text,
+            Width = 92,
+            Height = 30,
+            Margin = new Padding(0, 0, 8, 0),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = active ? Theme.NavActive : Color.White,
+            ForeColor = Theme.Text
+        };
+        button.FlatAppearance.BorderColor = active ? Theme.Accent : Theme.Line;
+        button.FlatAppearance.BorderSize = 1;
+        button.Click += onClick;
+        return button;
+    }
+
     private NotifyIcon CreateNotifyIcon()
     {
         var menu = new ContextMenuStrip();
@@ -362,7 +420,7 @@ public sealed class MainForm : Form
 
     private void RefreshData()
     {
-        _totalValue.Text = UiFormat.Duration(_tracker.ActiveTotal);
+        _bootValue.Text = UiFormat.Duration(GetSystemUptime());
         _foregroundValue.Text = UiFormat.Duration(_tracker.ForegroundTotal);
         _backgroundValue.Text = UiFormat.Duration(_tracker.BackgroundTotal);
         _currentValue.Text = _tracker.Current.AppName;
@@ -375,6 +433,7 @@ public sealed class MainForm : Form
 
         var activeItems = items.Where(item => !item.IsIdle).ToList();
         _chart.SetItems(activeItems);
+        _ringChart.SetDurations(_tracker.ForegroundTotal, _tracker.BackgroundTotal);
 
         _usageList.BeginUpdate();
         _usageList.Items.Clear();
@@ -402,6 +461,21 @@ public sealed class MainForm : Form
         _tracker.SetPeriod(period);
     }
 
+    private void SetChartMode(ChartMode mode)
+    {
+        _chartMode = mode;
+        RefreshChartTabs();
+    }
+
+    private void RefreshChartTabs()
+    {
+        var showBar = _chartMode == ChartMode.Bar;
+        _chart.Visible = showBar;
+        _ringChart.Visible = !showBar;
+        StyleTab(_barTab, showBar);
+        StyleTab(_ringTab, !showBar);
+    }
+
     private void RefreshNavState()
     {
         StyleNav(_todayNav, _tracker.Period == UsagePeriod.Day);
@@ -413,6 +487,15 @@ public sealed class MainForm : Form
         button.BackColor = active ? Theme.NavActive : Theme.Sidebar;
         button.ForeColor = Theme.Text;
     }
+
+    private static void StyleTab(Button button, bool active)
+    {
+        button.BackColor = active ? Theme.NavActive : Color.White;
+        button.FlatAppearance.BorderColor = active ? Theme.Accent : Theme.Line;
+    }
+
+    private static TimeSpan GetSystemUptime() =>
+        TimeSpan.FromMilliseconds(Environment.TickCount64);
 
     private void ExportData()
     {
