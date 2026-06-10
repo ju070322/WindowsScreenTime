@@ -3,6 +3,7 @@
 **/*.user
 **/*.pdb
 WindowsScreenTimeApp/package/WindowsScreenTime.exe
+WindowsScreenTimeApp/package/WindowsScreenTimeUninstall.exe
 WindowsScreenTimeApp/package/app.ico
 WindowsScreenTimeApp/package/app-icon.png
 WindowsScreenTimeApp/package/README.md
