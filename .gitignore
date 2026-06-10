@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/*.user
+**/*.pdb
+WindowsScreenTimeApp/package/WindowsScreenTime.exe
+WindowsScreenTimeApp/package/app.ico
+WindowsScreenTimeApp/package/app-icon.png
+WindowsScreenTimeApp/package/README.md
+WindowsScreenTimeApp/package/*.SED
+WindowsScreenTimeApp/package/~*.DDF
