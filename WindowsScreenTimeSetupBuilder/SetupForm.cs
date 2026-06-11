@@ -9,7 +9,7 @@ public sealed class SetupForm : Form
 {
     private const string AppName = "Windows Screen Time";
     private const string FolderName = "WindowsScreenTime";
-    private const string AppVersion = "1.4.3";
+    private const string AppVersion = "1.4.4";
     private const string Publisher = "\u54c8\u547c\u547c\u5417";
     private const string RegistryKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\WindowsScreenTime";
 

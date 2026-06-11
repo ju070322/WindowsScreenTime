@@ -633,13 +633,14 @@ public sealed class MainForm : Form
             return;
         }
 
-        var width = Math.Max(680, _usageList.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 4);
+        var width = Math.Max(680, _usageList.ClientSize.Width - 4);
+        var rightEdgeCover = _theme.IsDark ? SystemInformation.VerticalScrollBarWidth + 2 : 0;
         var app = Math.Max(150, (int)(width * 0.18));
         var foreground = Math.Max(92, (int)(width * 0.12));
         var background = Math.Max(92, (int)(width * 0.12));
         var total = Math.Max(92, (int)(width * 0.12));
         var share = Math.Max(72, (int)(width * 0.08));
-        var title = Math.Max(180, width - app - foreground - background - total - share);
+        var title = Math.Max(180, width - app - foreground - background - total - share + rightEdgeCover);
 
         _usageList.Columns[0].Width = app;
         _usageList.Columns[1].Width = foreground;
@@ -897,6 +898,11 @@ public sealed class MainForm : Form
         try
         {
             SetWindowTheme(_usageList.Handle, _theme.IsDark ? "DarkMode_Explorer" : "Explorer", null);
+            var header = SendMessage(_usageList.Handle, 0x101F, IntPtr.Zero, IntPtr.Zero);
+            if (header != IntPtr.Zero)
+            {
+                SetWindowTheme(header, _theme.IsDark ? "DarkMode_ItemsView" : "Explorer", null);
+            }
         }
         catch
         {
@@ -1034,4 +1040,7 @@ public sealed class MainForm : Form
 
     [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
     private static extern int SetWindowTheme(IntPtr hwnd, string? pszSubAppName, string? pszSubIdList);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 }

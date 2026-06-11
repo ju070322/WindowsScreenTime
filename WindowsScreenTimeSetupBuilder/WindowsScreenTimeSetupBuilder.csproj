@@ -9,7 +9,7 @@
     <AssemblyName>WindowsScreenTimeSetup</AssemblyName>
     <ApplicationIcon>..\WindowsScreenTimeApp\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.4.3</Version>
+    <Version>1.4.4</Version>
     <Authors>哈呼呼吗</Authors>
     <RepositoryUrl>https://github.com/ju070322/WindowsScreenTime</RepositoryUrl>
   </PropertyGroup>
