@@ -15,6 +15,7 @@ public sealed class BarChartPanel : Control
     ];
 
     private List<AppUsage> _items = [];
+    private AppTheme _theme = AppTheme.Resolve(AppThemeMode.Light);
 
     public BarChartPanel()
     {
@@ -22,6 +23,14 @@ public sealed class BarChartPanel : Control
         BackColor = Color.White;
         ForeColor = Color.FromArgb(29, 36, 48);
         Font = new Font("Microsoft YaHei UI", 9F);
+    }
+
+    public void ApplyTheme(AppTheme theme)
+    {
+        _theme = theme;
+        BackColor = theme.Surface;
+        ForeColor = theme.Text;
+        Invalidate();
     }
 
     public void SetItems(IEnumerable<AppUsage> items)
@@ -47,7 +56,7 @@ public sealed class BarChartPanel : Control
         }
 
         using var titleFont = new Font(Font.FontFamily, 13F, FontStyle.Bold);
-        using var mutedBrush = new SolidBrush(Color.FromArgb(102, 112, 133));
+        using var mutedBrush = new SolidBrush(_theme.Muted);
         using var textBrush = new SolidBrush(ForeColor);
         e.Graphics.DrawString("\u5e94\u7528\u4f7f\u7528\u65f6\u95f4\u6392\u884c", titleFont, textBrush, 0, 0);
 
@@ -65,7 +74,7 @@ public sealed class BarChartPanel : Control
         var slotWidth = plot.Width / Math.Max(1, _items.Count);
         var barWidth = Math.Max(22, Math.Min(56, (int)(slotWidth * 0.48)));
 
-        using var gridPen = new Pen(Color.FromArgb(232, 236, 244));
+        using var gridPen = new Pen(_theme.Grid);
         for (var i = 0; i <= 3; i++)
         {
             var y = plot.Bottom - plot.Height * i / 3;

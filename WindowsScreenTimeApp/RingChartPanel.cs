@@ -4,6 +4,7 @@ public sealed class RingChartPanel : Control
 {
     private TimeSpan _foreground;
     private TimeSpan _background;
+    private AppTheme _theme = AppTheme.Resolve(AppThemeMode.Light);
 
     public RingChartPanel()
     {
@@ -11,6 +12,14 @@ public sealed class RingChartPanel : Control
         BackColor = Color.White;
         ForeColor = Color.FromArgb(29, 36, 48);
         Font = new Font("Microsoft YaHei UI", 9F);
+    }
+
+    public void ApplyTheme(AppTheme theme)
+    {
+        _theme = theme;
+        BackColor = theme.Surface;
+        ForeColor = theme.Text;
+        Invalidate();
     }
 
     public void SetDurations(TimeSpan foreground, TimeSpan background)
@@ -29,7 +38,7 @@ public sealed class RingChartPanel : Control
         var total = _foreground + _background;
         using var titleFont = new Font(Font.FontFamily, 13F, FontStyle.Bold);
         using var textBrush = new SolidBrush(ForeColor);
-        using var mutedBrush = new SolidBrush(Color.FromArgb(102, 112, 133));
+        using var mutedBrush = new SolidBrush(_theme.Muted);
         e.Graphics.DrawString("\u524d\u53f0 / \u540e\u53f0\u65f6\u95f4\u5360\u6bd4", titleFont, textBrush, 0, 0);
 
         if (total.TotalSeconds <= 0)
@@ -44,7 +53,7 @@ public sealed class RingChartPanel : Control
         var fgSweep = (float)(_foreground.TotalSeconds / total.TotalSeconds * 360);
         var bgSweep = 360 - fgSweep;
 
-        using var basePen = new Pen(Color.FromArgb(232, 236, 244), 24) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round };
+        using var basePen = new Pen(_theme.Grid, 24) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round };
         using var fgPen = new Pen(Color.FromArgb(47, 111, 237), 24) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round };
         using var bgPen = new Pen(Color.FromArgb(18, 128, 92), 24) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round };
 
@@ -72,7 +81,7 @@ public sealed class RingChartPanel : Control
         var y = bounds.Top + yOffset;
         using var dot = new SolidBrush(color);
         using var textBrush = new SolidBrush(ForeColor);
-        using var mutedBrush = new SolidBrush(Color.FromArgb(102, 112, 133));
+        using var mutedBrush = new SolidBrush(_theme.Muted);
         using var bold = new Font(Font.FontFamily, 12F, FontStyle.Bold);
         using var normal = new Font(Font.FontFamily, 9F);
         graphics.FillEllipse(dot, bounds.Left, y + 8, 12, 12);

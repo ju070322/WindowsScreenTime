@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
+using Microsoft.Win32;
 
 namespace WindowsScreenTimeApp;
 
@@ -12,10 +13,21 @@ public sealed class MainForm : Form
         Ring
     }
 
+    private enum UsageSortColumn
+    {
+        App,
+        Foreground,
+        Background,
+        Total,
+        Percent,
+        Title
+    }
+
     private readonly AppSettings _settings;
     private readonly ActivityTracker _tracker;
     private readonly NotifyIcon _notifyIcon;
     private readonly Icon _appIcon;
+    private AppTheme _theme;
     private readonly Label _bootValue = new();
     private readonly Label _foregroundValue = new();
     private readonly Label _backgroundValue = new();
@@ -29,6 +41,8 @@ public sealed class MainForm : Form
     private readonly Button _barTab;
     private readonly Button _ringTab;
     private ChartMode _chartMode = ChartMode.Bar;
+    private UsageSortColumn _sortColumn = UsageSortColumn.Total;
+    private bool _sortDescending = true;
     private bool _reallyExit;
 
     public MainForm()
@@ -37,15 +51,17 @@ public sealed class MainForm : Form
         MinimumSize = new Size(1120, 760);
         Size = new Size(1280, 840);
         StartPosition = FormStartPosition.CenterScreen;
-        BackColor = Theme.Window;
         Font = new Font("Microsoft YaHei UI", 9F);
         _appIcon = LoadAppIcon();
         Icon = _appIcon;
 
         _settings = AppSettings.Load();
+        _theme = AppTheme.Resolve(_settings.ThemeMode);
+        BackColor = _theme.Window;
         _tracker = new ActivityTracker(_settings);
         _tracker.Updated += (_, _) => RefreshData();
         _notifyIcon = CreateNotifyIcon();
+        SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
 
         _todayNav = MakeNavButton("\u4eca\u65e5\u4f7f\u7528\u65f6\u95f4", (_, _) => SetPeriod(UsagePeriod.Day));
         _weekNav = MakeNavButton("\u672c\u5468\u4f7f\u7528\u65f6\u95f4", (_, _) => SetPeriod(UsagePeriod.Week));
@@ -72,6 +88,7 @@ public sealed class MainForm : Form
         }
 
         _notifyIcon.Visible = false;
+        SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         _tracker.Dispose();
         _appIcon.Dispose();
         base.OnFormClosing(e);
@@ -93,9 +110,10 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 2,
             RowCount = 1,
-            BackColor = Theme.Window
+            BackColor = _theme.Window,
+            Tag = "window"
         };
-        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 248));
+        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 264));
         shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         Controls.Add(shell);
 
@@ -108,8 +126,9 @@ public sealed class MainForm : Form
         var sidebar = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = Theme.Sidebar,
-            Padding = new Padding(16, 18, 16, 14)
+            BackColor = _theme.Sidebar,
+            Padding = new Padding(16, 18, 16, 14),
+            Tag = "sidebar"
         };
 
         var layout = new TableLayoutPanel
@@ -117,13 +136,14 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 5,
-            BackColor = Theme.Sidebar
+            BackColor = _theme.Sidebar,
+            Tag = "sidebar"
         };
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 142));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 178));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 128));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 222));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 124));
         sidebar.Controls.Add(layout);
 
         layout.Controls.Add(new Label
@@ -131,8 +151,9 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             Text = "Windows\r\nScreen Time",
             Font = new Font(Font.FontFamily, 15F, FontStyle.Bold),
-            ForeColor = Theme.Text,
-            TextAlign = ContentAlignment.MiddleLeft
+            ForeColor = _theme.Text,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Tag = "text"
         }, 0, 0);
 
         var viewSection = MakeSidebarSection("\u89c6\u56fe");
@@ -151,29 +172,32 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             Text = $"\u7248\u672c {AppInfo.Version}\r\n\u4f5c\u8005\uff1a{AppInfo.Author}\r\n{AppInfo.ProjectUrl}",
-            ForeColor = Theme.Muted,
-            TextAlign = ContentAlignment.BottomLeft
+            ForeColor = _theme.Muted,
+            TextAlign = ContentAlignment.BottomLeft,
+            Tag = "muted"
         }, 0, 4);
         return sidebar;
     }
 
-    private static FlowLayoutPanel MakeSidebarSection(string title)
+    private FlowLayoutPanel MakeSidebarSection(string title)
     {
         var section = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
-            BackColor = Theme.Sidebar,
-            Padding = new Padding(0, 8, 0, 0)
+            BackColor = _theme.Sidebar,
+            Padding = new Padding(0, 8, 0, 0),
+            Tag = "sidebar"
         };
         section.Controls.Add(new Label
         {
-            Width = 206,
+            Width = 222,
             Height = 24,
             Text = title,
-            ForeColor = Theme.Muted,
-            TextAlign = ContentAlignment.MiddleLeft
+            ForeColor = _theme.Muted,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Tag = "muted"
         });
         return section;
     }
@@ -186,7 +210,8 @@ public sealed class MainForm : Form
             ColumnCount = 1,
             RowCount = 3,
             Padding = new Padding(18),
-            BackColor = Theme.Window
+            BackColor = _theme.Window,
+            Tag = "window"
         };
         content.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 48));
@@ -205,7 +230,8 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 4,
             RowCount = 1,
-            BackColor = Theme.Window
+            BackColor = _theme.Window,
+            Tag = "window"
         };
         for (var i = 0; i < 4; i++)
         {
@@ -229,7 +255,8 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 2,
-            BackColor = Color.White
+            BackColor = _theme.Surface,
+            Tag = "surface"
         };
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -239,15 +266,18 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
-            BackColor = Color.White
+            BackColor = _theme.Surface,
+            Tag = "surface"
         };
         tabs.Controls.Add(_barTab);
         tabs.Controls.Add(_ringTab);
         layout.Controls.Add(tabs, 0, 0);
 
-        var chartHost = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
+        var chartHost = new Panel { Dock = DockStyle.Fill, BackColor = _theme.Surface, Tag = "surface" };
         _chart.Dock = DockStyle.Fill;
+        _chart.ApplyTheme(_theme);
         _ringChart.Dock = DockStyle.Fill;
+        _ringChart.ApplyTheme(_theme);
         _ringChart.Visible = false;
         chartHost.Controls.Add(_ringChart);
         chartHost.Controls.Add(_chart);
@@ -267,7 +297,8 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 2,
-            BackColor = Color.White
+            BackColor = _theme.Surface,
+            Tag = "surface"
         };
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -277,8 +308,9 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             Text = "\u5e94\u7528\u660e\u7ec6",
             Font = new Font(Font.FontFamily, 13F, FontStyle.Bold),
-            ForeColor = Theme.Text,
-            TextAlign = ContentAlignment.MiddleLeft
+            ForeColor = _theme.Text,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Tag = "text"
         }, 0, 0);
 
         _usageList.Dock = DockStyle.Fill;
@@ -286,21 +318,24 @@ public sealed class MainForm : Form
         _usageList.FullRowSelect = true;
         _usageList.GridLines = false;
         _usageList.BorderStyle = BorderStyle.None;
-        _usageList.BackColor = Color.White;
-        _usageList.ForeColor = Theme.Text;
+        _usageList.BackColor = _theme.Surface;
+        _usageList.ForeColor = _theme.Text;
         _usageList.Columns.Add("\u5e94\u7528", 210);
         _usageList.Columns.Add("\u524d\u53f0", 110);
         _usageList.Columns.Add("\u540e\u53f0", 110);
         _usageList.Columns.Add("\u603b\u65f6\u95f4", 110);
         _usageList.Columns.Add("\u5360\u6bd4", 80);
         _usageList.Columns.Add("\u6700\u8fd1\u7a97\u53e3\u6807\u9898", 520);
+        _usageList.ColumnClick += OnUsageColumnClick;
+        UpdateUsageColumnHeaders();
 
         _emptyState.Dock = DockStyle.Fill;
         _emptyState.Text = "\u7edf\u8ba1\u51e0\u79d2\u540e\u4f1a\u663e\u793a\u5e94\u7528\u660e\u7ec6\u3002";
-        _emptyState.ForeColor = Theme.Muted;
+        _emptyState.ForeColor = _theme.Muted;
         _emptyState.TextAlign = ContentAlignment.MiddleCenter;
+        _emptyState.Tag = "muted";
 
-        var listHost = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
+        var listHost = new Panel { Dock = DockStyle.Fill, BackColor = _theme.Surface, Tag = "surface" };
         listHost.Controls.Add(_usageList);
         listHost.Controls.Add(_emptyState);
 
@@ -320,28 +355,31 @@ public sealed class MainForm : Form
             Dock = DockStyle.Top,
             Height = 24,
             Text = labelText,
-            ForeColor = Theme.Muted
+            ForeColor = _theme.Muted,
+            Tag = "muted"
         };
         valueLabel.Dock = DockStyle.Fill;
         valueLabel.Font = new Font(Font.FontFamily, 17F, FontStyle.Bold);
-        valueLabel.ForeColor = Theme.Text;
+        valueLabel.ForeColor = _theme.Text;
         valueLabel.AutoEllipsis = true;
         valueLabel.TextAlign = ContentAlignment.MiddleLeft;
+        valueLabel.Tag = "text";
 
         panel.Controls.Add(valueLabel);
         panel.Controls.Add(label);
         return panel;
     }
 
-    private static Panel MakePanel() => new RoundedPanel
+    private Panel MakePanel() => new RoundedPanel
     {
         Dock = DockStyle.Fill,
-        BackColor = Color.White,
-        BorderColor = Theme.Line,
-        Radius = 8
+        BackColor = _theme.Surface,
+        BorderColor = _theme.Line,
+        Radius = 8,
+        Tag = "surface"
     };
 
-    private static Button MakeButton(string text, EventHandler onClick, bool primary)
+    private Button MakeButton(string text, EventHandler onClick, bool primary)
     {
         var button = new Button
         {
@@ -350,35 +388,37 @@ public sealed class MainForm : Form
             Height = 34,
             Margin = new Padding(8, 0, 0, 0),
             FlatStyle = FlatStyle.Flat,
-            BackColor = primary ? Theme.Accent : Color.White,
-            ForeColor = primary ? Color.White : Theme.Text
+            BackColor = primary ? _theme.Accent : _theme.Surface,
+            ForeColor = primary ? Color.White : _theme.Text,
+            Tag = primary ? "primaryButton" : "button"
         };
-        button.FlatAppearance.BorderColor = primary ? Theme.Accent : Theme.Line;
+        button.FlatAppearance.BorderColor = primary ? _theme.Accent : _theme.Line;
         button.FlatAppearance.BorderSize = 1;
         button.Click += onClick;
         return button;
     }
 
-    private static Button MakeNavButton(string text, EventHandler onClick)
+    private Button MakeNavButton(string text, EventHandler onClick)
     {
         var button = new Button
         {
             Text = text,
-            Width = 206,
+            Width = 222,
             Height = 36,
             Margin = new Padding(0, 0, 0, 8),
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(14, 0, 0, 0),
             FlatStyle = FlatStyle.Flat,
-            BackColor = Theme.Sidebar,
-            ForeColor = Theme.Text
+            BackColor = _theme.Sidebar,
+            ForeColor = _theme.Text,
+            Tag = "nav"
         };
         button.FlatAppearance.BorderSize = 0;
         button.Click += onClick;
         return button;
     }
 
-    private static Button MakeTabButton(string text, EventHandler onClick, bool active)
+    private Button MakeTabButton(string text, EventHandler onClick, bool active)
     {
         var button = new Button
         {
@@ -387,10 +427,11 @@ public sealed class MainForm : Form
             Height = 30,
             Margin = new Padding(0, 0, 8, 0),
             FlatStyle = FlatStyle.Flat,
-            BackColor = active ? Theme.NavActive : Color.White,
-            ForeColor = Theme.Text
+            BackColor = active ? _theme.NavActive : _theme.Surface,
+            ForeColor = _theme.Text,
+            Tag = "tab"
         };
-        button.FlatAppearance.BorderColor = active ? Theme.Accent : Theme.Line;
+        button.FlatAppearance.BorderColor = active ? _theme.Accent : _theme.Line;
         button.FlatAppearance.BorderSize = 1;
         button.Click += onClick;
         return button;
@@ -434,6 +475,7 @@ public sealed class MainForm : Form
         var activeItems = items.Where(item => !item.IsIdle).ToList();
         _chart.SetItems(activeItems);
         _ringChart.SetDurations(_tracker.ForegroundTotal, _tracker.BackgroundTotal);
+        items = SortUsageItems(items);
 
         _usageList.BeginUpdate();
         _usageList.Items.Clear();
@@ -448,7 +490,8 @@ public sealed class MainForm : Form
             row.SubItems.Add(UiFormat.Duration(item.Duration));
             row.SubItems.Add(percent);
             row.SubItems.Add(item.WindowTitle);
-            row.ForeColor = item.IsIdle ? Theme.Muted : Theme.Text;
+            row.ForeColor = item.IsIdle ? _theme.Muted : _theme.Text;
+            row.BackColor = _usageList.Items.Count % 2 == 0 ? _theme.Surface : _theme.ListAlt;
             _usageList.Items.Add(row);
         }
         _usageList.EndUpdate();
@@ -467,6 +510,85 @@ public sealed class MainForm : Form
         RefreshChartTabs();
     }
 
+    private void OnUsageColumnClick(object? sender, ColumnClickEventArgs e)
+    {
+        var column = (UsageSortColumn)e.Column;
+        if (_sortColumn == column)
+        {
+            _sortDescending = !_sortDescending;
+        }
+        else
+        {
+            _sortColumn = column;
+            _sortDescending = column is UsageSortColumn.Foreground or UsageSortColumn.Background or UsageSortColumn.Total or UsageSortColumn.Percent;
+        }
+
+        UpdateUsageColumnHeaders();
+        RefreshData();
+    }
+
+    private List<AppUsage> SortUsageItems(IEnumerable<AppUsage> items)
+    {
+        static string SafeText(string? text) => text ?? string.Empty;
+
+        IOrderedEnumerable<AppUsage> ordered = _sortColumn switch
+        {
+            UsageSortColumn.App => _sortDescending
+                ? items.OrderByDescending(item => SafeText(item.AppName), StringComparer.CurrentCultureIgnoreCase)
+                : items.OrderBy(item => SafeText(item.AppName), StringComparer.CurrentCultureIgnoreCase),
+            UsageSortColumn.Foreground => _sortDescending
+                ? items.OrderByDescending(item => item.ForegroundDuration)
+                : items.OrderBy(item => item.ForegroundDuration),
+            UsageSortColumn.Background => _sortDescending
+                ? items.OrderByDescending(item => item.BackgroundDuration)
+                : items.OrderBy(item => item.BackgroundDuration),
+            UsageSortColumn.Total => _sortDescending
+                ? items.OrderByDescending(item => item.Duration)
+                : items.OrderBy(item => item.Duration),
+            UsageSortColumn.Percent => _sortDescending
+                ? items.OrderByDescending(GetUsagePercentValue)
+                : items.OrderBy(GetUsagePercentValue),
+            UsageSortColumn.Title => _sortDescending
+                ? items.OrderByDescending(item => SafeText(item.WindowTitle), StringComparer.CurrentCultureIgnoreCase)
+                : items.OrderBy(item => SafeText(item.WindowTitle), StringComparer.CurrentCultureIgnoreCase),
+            _ => items.OrderByDescending(item => item.Duration)
+        };
+
+        return ordered
+            .ThenBy(item => item.IsIdle)
+            .ThenBy(item => item.AppName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    private double GetUsagePercentValue(AppUsage item) =>
+        item.IsIdle || _tracker.ActiveTotal.TotalSeconds <= 0
+            ? 0
+            : item.Duration.TotalSeconds / _tracker.ActiveTotal.TotalSeconds;
+
+    private void UpdateUsageColumnHeaders()
+    {
+        if (_usageList.Columns.Count < 6)
+        {
+            return;
+        }
+
+        string[] names =
+        [
+            "\u5e94\u7528",
+            "\u524d\u53f0",
+            "\u540e\u53f0",
+            "\u603b\u65f6\u95f4",
+            "\u5360\u6bd4",
+            "\u6700\u8fd1\u7a97\u53e3\u6807\u9898"
+        ];
+
+        for (var i = 0; i < names.Length; i++)
+        {
+            var marker = i == (int)_sortColumn ? (_sortDescending ? " \u2193" : " \u2191") : string.Empty;
+            _usageList.Columns[i].Text = names[i] + marker;
+        }
+    }
+
     private void RefreshChartTabs()
     {
         var showBar = _chartMode == ChartMode.Bar;
@@ -482,16 +604,17 @@ public sealed class MainForm : Form
         StyleNav(_weekNav, _tracker.Period == UsagePeriod.Week);
     }
 
-    private static void StyleNav(Button button, bool active)
+    private void StyleNav(Button button, bool active)
     {
-        button.BackColor = active ? Theme.NavActive : Theme.Sidebar;
-        button.ForeColor = Theme.Text;
+        button.BackColor = active ? _theme.NavActive : _theme.Sidebar;
+        button.ForeColor = _theme.Text;
     }
 
-    private static void StyleTab(Button button, bool active)
+    private void StyleTab(Button button, bool active)
     {
-        button.BackColor = active ? Theme.NavActive : Color.White;
-        button.FlatAppearance.BorderColor = active ? Theme.Accent : Theme.Line;
+        button.BackColor = active ? _theme.NavActive : _theme.Surface;
+        button.ForeColor = _theme.Text;
+        button.FlatAppearance.BorderColor = active ? _theme.Accent : _theme.Line;
     }
 
     private static TimeSpan GetSystemUptime() =>
@@ -552,6 +675,7 @@ public sealed class MainForm : Form
                 StartupManager.SetEnabled(_settings.StartWithWindows);
                 _settings.Save();
                 _tracker.ApplySettings(_settings);
+                ApplyTheme(AppTheme.Resolve(_settings.ThemeMode));
             }
             RefreshData();
             MessageBox.Show("\u6570\u636e\u5df2\u5bfc\u5165\u5e76\u5408\u5e76\u3002", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -577,7 +701,7 @@ public sealed class MainForm : Form
 
     private void OpenSettings()
     {
-        using var dialog = new SettingsForm(_settings);
+        using var dialog = new SettingsForm(_settings, _theme);
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
@@ -588,6 +712,7 @@ public sealed class MainForm : Form
             StartupManager.SetEnabled(_settings.StartWithWindows);
             _settings.Save();
             _tracker.ApplySettings(_settings);
+            ApplyTheme(AppTheme.Resolve(_settings.ThemeMode));
             RefreshData();
         }
         catch (Exception ex)
@@ -604,6 +729,87 @@ public sealed class MainForm : Form
             FileName = AppInfo.ProjectUrl,
             UseShellExecute = true
         });
+    }
+
+    private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+    {
+        if (_settings.ThemeMode != AppThemeMode.System)
+        {
+            return;
+        }
+
+        if (e.Category is UserPreferenceCategory.General or UserPreferenceCategory.VisualStyle)
+        {
+            BeginInvoke(() => ApplyTheme(AppTheme.Resolve(_settings.ThemeMode)));
+        }
+    }
+
+    private void ApplyTheme(AppTheme theme)
+    {
+        _theme = theme;
+        BackColor = _theme.Window;
+        ApplyThemeToControl(this);
+        _chart.ApplyTheme(_theme);
+        _ringChart.ApplyTheme(_theme);
+        _usageList.BackColor = _theme.Surface;
+        _usageList.ForeColor = _theme.Text;
+        RefreshNavState();
+        RefreshChartTabs();
+        Invalidate(true);
+    }
+
+    private void ApplyThemeToControl(Control control)
+    {
+        switch (control.Tag as string)
+        {
+            case "window":
+                control.BackColor = _theme.Window;
+                break;
+            case "sidebar":
+                control.BackColor = _theme.Sidebar;
+                break;
+            case "surface":
+                control.BackColor = _theme.Surface;
+                if (control is RoundedPanel rounded)
+                {
+                    rounded.BorderColor = _theme.Line;
+                }
+                break;
+            case "text":
+                control.ForeColor = _theme.Text;
+                break;
+            case "muted":
+                control.ForeColor = _theme.Muted;
+                break;
+            case "button":
+                control.BackColor = _theme.Surface;
+                control.ForeColor = _theme.Text;
+                if (control is Button secondaryButton)
+                {
+                    secondaryButton.FlatAppearance.BorderColor = _theme.Line;
+                }
+                break;
+            case "primaryButton":
+                control.BackColor = _theme.Accent;
+                control.ForeColor = Color.White;
+                if (control is Button primaryButton)
+                {
+                    primaryButton.FlatAppearance.BorderColor = _theme.Accent;
+                }
+                break;
+            case "nav":
+                control.BackColor = _theme.Sidebar;
+                control.ForeColor = _theme.Text;
+                break;
+            case "tab":
+                control.ForeColor = _theme.Text;
+                break;
+        }
+
+        foreach (Control child in control.Controls)
+        {
+            ApplyThemeToControl(child);
+        }
     }
 
     private void HideToTray()
@@ -641,24 +847,13 @@ public sealed class MainForm : Form
         return Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
     }
 
-    private static class Theme
-    {
-        public static readonly Color Window = Color.FromArgb(243, 244, 248);
-        public static readonly Color Sidebar = Color.FromArgb(248, 249, 252);
-        public static readonly Color NavActive = Color.FromArgb(230, 238, 255);
-        public static readonly Color Text = Color.FromArgb(29, 36, 48);
-        public static readonly Color Muted = Color.FromArgb(102, 112, 133);
-        public static readonly Color Line = Color.FromArgb(217, 222, 231);
-        public static readonly Color Accent = Color.FromArgb(47, 111, 237);
-    }
-
     private sealed class RoundedPanel : Panel
     {
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int Radius { get; init; } = 8;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Color BorderColor { get; init; } = Color.LightGray;
+        public Color BorderColor { get; set; } = Color.LightGray;
 
         protected override void OnPaint(PaintEventArgs e)
         {

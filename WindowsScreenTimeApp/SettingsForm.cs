@@ -3,23 +3,26 @@ namespace WindowsScreenTimeApp;
 public sealed class SettingsForm : Form
 {
     private readonly AppSettings _settings;
+    private readonly AppTheme _theme;
     private readonly NumericUpDown _sampleSeconds = new();
     private readonly NumericUpDown _idleMinutes = new();
     private readonly CheckBox _startWithWindows = new();
     private readonly CheckBox _startMinimized = new();
     private readonly CheckBox _minimizeOnClose = new();
     private readonly CheckBox _includeIdle = new();
+    private readonly ComboBox _themeMode = new();
 
-    public SettingsForm(AppSettings settings)
+    public SettingsForm(AppSettings settings, AppTheme theme)
     {
         _settings = settings;
+        _theme = theme;
         Text = "\u8bbe\u7f6e";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(540, 480);
-        BackColor = Color.FromArgb(243, 244, 248);
+        ClientSize = new Size(560, 520);
+        BackColor = _theme.Window;
         Font = new Font("Microsoft YaHei UI", 9F);
         Icon = Owner?.Icon ?? Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
 
@@ -47,7 +50,7 @@ public sealed class SettingsForm : Form
             Dock = DockStyle.Fill,
             Text = "\u8bbe\u7f6e",
             Font = new Font(Font.FontFamily, 18F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(29, 36, 48),
+            ForeColor = _theme.Text,
             TextAlign = ContentAlignment.MiddleLeft
         }, 0, 0);
 
@@ -55,13 +58,13 @@ public sealed class SettingsForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
-            RowCount = 8,
-            BackColor = Color.White,
+            RowCount = 9,
+            BackColor = _theme.Surface,
             Padding = new Padding(16)
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
-        for (var i = 0; i < 6; i++)
+        for (var i = 0; i < 7; i++)
         {
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
         }
@@ -75,17 +78,18 @@ public sealed class SettingsForm : Form
         AddCheckRow(panel, 3, "\u542f\u52a8\u540e\u76f4\u63a5\u6700\u5c0f\u5316\u5230\u540e\u53f0", _startMinimized);
         AddCheckRow(panel, 4, "\u70b9\u51fb\u5173\u95ed\u6309\u94ae\u65f6\u6700\u5c0f\u5316\u5230\u540e\u53f0", _minimizeOnClose);
         AddCheckRow(panel, 5, "\u5217\u8868\u4e2d\u663e\u793a\u7a7a\u95f2\u65f6\u95f4", _includeIdle);
+        AddThemeRow(panel, 6);
 
         var hint = new Label
         {
             Dock = DockStyle.Fill,
             Text = "\u8bbe\u7f6e\u4f1a\u4fdd\u5b58\u5728\u5f53\u524d\u7528\u6237\u7684\u672c\u5730\u5e94\u7528\u6570\u636e\u76ee\u5f55\u3002",
-            ForeColor = Color.FromArgb(102, 112, 133),
+            ForeColor = _theme.Muted,
             TextAlign = ContentAlignment.TopLeft,
             AutoEllipsis = true,
             Padding = new Padding(0, 10, 0, 0)
         };
-        panel.Controls.Add(hint, 0, 6);
+        panel.Controls.Add(hint, 0, 7);
         panel.SetColumnSpan(hint, 2);
 
         var buttonHost = new Panel
@@ -123,29 +127,49 @@ public sealed class SettingsForm : Form
         FlatStyle = FlatStyle.System
     };
 
-    private static void AddNumberRow(TableLayoutPanel panel, int row, string labelText, NumericUpDown input, int min, int max)
+    private void AddNumberRow(TableLayoutPanel panel, int row, string labelText, NumericUpDown input, int min, int max)
     {
         panel.Controls.Add(MakeLabel(labelText), 0, row);
         input.Dock = DockStyle.Fill;
         input.Minimum = min;
         input.Maximum = max;
         input.TextAlign = HorizontalAlignment.Right;
+        input.BackColor = _theme.Surface;
+        input.ForeColor = _theme.Text;
         panel.Controls.Add(input, 1, row);
     }
 
-    private static void AddCheckRow(TableLayoutPanel panel, int row, string labelText, CheckBox input)
+    private void AddCheckRow(TableLayoutPanel panel, int row, string labelText, CheckBox input)
     {
         panel.Controls.Add(MakeLabel(labelText), 0, row);
         input.Dock = DockStyle.Left;
         input.AutoSize = true;
+        input.ForeColor = _theme.Text;
+        input.BackColor = _theme.Surface;
         panel.Controls.Add(input, 1, row);
     }
 
-    private static Label MakeLabel(string text) => new()
+    private void AddThemeRow(TableLayoutPanel panel, int row)
+    {
+        panel.Controls.Add(MakeLabel("\u5916\u89c2\u4e3b\u9898"), 0, row);
+        _themeMode.Dock = DockStyle.Fill;
+        _themeMode.DropDownStyle = ComboBoxStyle.DropDownList;
+        _themeMode.Items.AddRange(
+        [
+            new ThemeOption(AppThemeMode.System, "\u8ddf\u968f\u7cfb\u7edf"),
+            new ThemeOption(AppThemeMode.Light, "\u6d45\u8272"),
+            new ThemeOption(AppThemeMode.Dark, "\u6df1\u8272")
+        ]);
+        _themeMode.BackColor = _theme.Surface;
+        _themeMode.ForeColor = _theme.Text;
+        panel.Controls.Add(_themeMode, 1, row);
+    }
+
+    private Label MakeLabel(string text) => new()
     {
         Dock = DockStyle.Fill,
         Text = text,
-        ForeColor = Color.FromArgb(29, 36, 48),
+        ForeColor = _theme.Text,
         TextAlign = ContentAlignment.MiddleLeft
     };
 
@@ -157,6 +181,19 @@ public sealed class SettingsForm : Form
         _startMinimized.Checked = _settings.StartMinimized;
         _minimizeOnClose.Checked = _settings.MinimizeToTrayOnClose;
         _includeIdle.Checked = _settings.IncludeIdleInList;
+        for (var i = 0; i < _themeMode.Items.Count; i++)
+        {
+            if (_themeMode.Items[i] is ThemeOption option && option.Mode == _settings.ThemeMode)
+            {
+                _themeMode.SelectedIndex = i;
+                break;
+            }
+        }
+
+        if (_themeMode.SelectedIndex < 0)
+        {
+            _themeMode.SelectedIndex = 0;
+        }
     }
 
     private void SaveValues()
@@ -167,5 +204,15 @@ public sealed class SettingsForm : Form
         _settings.StartMinimized = _startMinimized.Checked;
         _settings.MinimizeToTrayOnClose = _minimizeOnClose.Checked;
         _settings.IncludeIdleInList = _includeIdle.Checked;
+        if (_themeMode.SelectedItem is ThemeOption option)
+        {
+            _settings.ThemeMode = option.Mode;
+        }
+    }
+
+    private sealed class ThemeOption(AppThemeMode mode, string label)
+    {
+        public AppThemeMode Mode { get; } = mode;
+        public override string ToString() => label;
     }
 }
