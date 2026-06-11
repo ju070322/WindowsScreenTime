@@ -16,6 +16,7 @@ public sealed class BarChartPanel : Control
 
     private List<AppUsage> _items = [];
     private AppTheme _theme = AppTheme.Resolve(AppThemeMode.Light);
+    private Texts _texts = Texts.Resolve(AppLanguage.System);
 
     public BarChartPanel()
     {
@@ -30,6 +31,12 @@ public sealed class BarChartPanel : Control
         _theme = theme;
         BackColor = theme.Surface;
         ForeColor = theme.Text;
+        Invalidate();
+    }
+
+    public void ApplyTexts(Texts texts)
+    {
+        _texts = texts;
         Invalidate();
     }
 
@@ -58,11 +65,11 @@ public sealed class BarChartPanel : Control
         using var titleFont = new Font(Font.FontFamily, 13F, FontStyle.Bold);
         using var mutedBrush = new SolidBrush(_theme.Muted);
         using var textBrush = new SolidBrush(ForeColor);
-        e.Graphics.DrawString("\u5e94\u7528\u4f7f\u7528\u65f6\u95f4\u6392\u884c", titleFont, textBrush, 0, 0);
+        e.Graphics.DrawString(_texts.UsageRanking, titleFont, textBrush, 0, 0);
 
         if (_items.Count == 0)
         {
-            DrawCenteredText(e.Graphics, "\u7edf\u8ba1\u51e0\u79d2\u540e\u4f1a\u663e\u793a\u67f1\u72b6\u56fe\u3002", bounds, mutedBrush);
+            DrawCenteredText(e.Graphics, _texts.EmptyBarChart, bounds, mutedBrush);
             return;
         }
 

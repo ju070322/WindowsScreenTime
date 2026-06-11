@@ -9,7 +9,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>WindowsScreenTime</AssemblyName>
     <RootNamespace>WindowsScreenTimeApp</RootNamespace>
-    <Version>1.4.2</Version>
+    <Version>1.4.3</Version>
     <Authors>哈呼呼吗</Authors>
     <Description>Windows screen time tracker with foreground and background usage statistics.</Description>
     <RepositoryUrl>https://github.com/ju070322/WindowsScreenTime</RepositoryUrl>

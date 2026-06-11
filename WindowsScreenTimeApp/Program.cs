@@ -10,7 +10,7 @@ static class Program
         _singleInstance = new Mutex(true, "WindowsScreenTimeApp.SingleInstance", out var created);
         if (!created)
         {
-            MessageBox.Show("Windows Screen Time 已经在运行。请从系统托盘打开。", "Windows Screen Time",
+            MessageBox.Show("Windows Screen Time \u5df2\u7ecf\u5728\u8fd0\u884c\u3002\u8bf7\u4ece\u7cfb\u7edf\u6258\u76d8\u6253\u5f00\u3002", "Windows Screen Time",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }

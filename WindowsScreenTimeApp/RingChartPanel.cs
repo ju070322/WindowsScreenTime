@@ -5,6 +5,7 @@ public sealed class RingChartPanel : Control
     private TimeSpan _foreground;
     private TimeSpan _background;
     private AppTheme _theme = AppTheme.Resolve(AppThemeMode.Light);
+    private Texts _texts = Texts.Resolve(AppLanguage.System);
 
     public RingChartPanel()
     {
@@ -19,6 +20,12 @@ public sealed class RingChartPanel : Control
         _theme = theme;
         BackColor = theme.Surface;
         ForeColor = theme.Text;
+        Invalidate();
+    }
+
+    public void ApplyTexts(Texts texts)
+    {
+        _texts = texts;
         Invalidate();
     }
 
@@ -39,11 +46,11 @@ public sealed class RingChartPanel : Control
         using var titleFont = new Font(Font.FontFamily, 13F, FontStyle.Bold);
         using var textBrush = new SolidBrush(ForeColor);
         using var mutedBrush = new SolidBrush(_theme.Muted);
-        e.Graphics.DrawString("\u524d\u53f0 / \u540e\u53f0\u65f6\u95f4\u5360\u6bd4", titleFont, textBrush, 0, 0);
+        e.Graphics.DrawString(_texts.ForegroundBackgroundShare, titleFont, textBrush, 0, 0);
 
         if (total.TotalSeconds <= 0)
         {
-            DrawCenteredText(e.Graphics, "\u7edf\u8ba1\u51e0\u79d2\u540e\u4f1a\u663e\u793a\u5706\u73af\u56fe\u3002", ClientRectangle, mutedBrush);
+            DrawCenteredText(e.Graphics, _texts.EmptyRingChart, ClientRectangle, mutedBrush);
             return;
         }
 
@@ -68,12 +75,12 @@ public sealed class RingChartPanel : Control
         using var smallFont = new Font(Font.FontFamily, 8.5F);
         DrawCenteredLine(e.Graphics, UiFormat.Duration(total), centerFont, textBrush, chart);
         var sub = new Rectangle(chart.Left, chart.Top + chart.Height / 2 + 22, chart.Width, 24);
-        DrawCenteredLine(e.Graphics, "\u603b\u4f7f\u7528\u65f6\u95f4", smallFont, mutedBrush, sub);
+        DrawCenteredLine(e.Graphics, _texts.TotalUsageTime, smallFont, mutedBrush, sub);
 
         var legendX = chart.Right + 42;
         var legend = new Rectangle(legendX, 70, Math.Max(180, ClientSize.Width - legendX - 16), chart.Height);
-        DrawLegend(e.Graphics, legend, "\u524d\u53f0\u65f6\u95f4", _foreground, Color.FromArgb(47, 111, 237), total, 0);
-        DrawLegend(e.Graphics, legend, "\u540e\u53f0\u65f6\u95f4", _background, Color.FromArgb(18, 128, 92), total, 76);
+        DrawLegend(e.Graphics, legend, _texts.ForegroundTime, _foreground, Color.FromArgb(47, 111, 237), total, 0);
+        DrawLegend(e.Graphics, legend, _texts.BackgroundTime, _background, Color.FromArgb(18, 128, 92), total, 76);
     }
 
     private void DrawLegend(Graphics graphics, Rectangle bounds, string label, TimeSpan value, Color color, TimeSpan total, int yOffset)

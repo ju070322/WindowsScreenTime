@@ -4,6 +4,7 @@ public sealed class SettingsForm : Form
 {
     private readonly AppSettings _settings;
     private readonly AppTheme _theme;
+    private readonly Texts _texts;
     private readonly NumericUpDown _sampleSeconds = new();
     private readonly NumericUpDown _idleMinutes = new();
     private readonly CheckBox _startWithWindows = new();
@@ -11,12 +12,14 @@ public sealed class SettingsForm : Form
     private readonly CheckBox _minimizeOnClose = new();
     private readonly CheckBox _includeIdle = new();
     private readonly ComboBox _themeMode = new();
+    private readonly ComboBox _language = new();
 
-    public SettingsForm(AppSettings settings, AppTheme theme)
+    public SettingsForm(AppSettings settings, AppTheme theme, Texts texts)
     {
         _settings = settings;
         _theme = theme;
-        Text = "\u8bbe\u7f6e";
+        _texts = texts;
+        Text = _texts.Settings;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -48,7 +51,7 @@ public sealed class SettingsForm : Form
         root.Controls.Add(new Label
         {
             Dock = DockStyle.Fill,
-            Text = "\u8bbe\u7f6e",
+            Text = _texts.Settings,
             Font = new Font(Font.FontFamily, 18F, FontStyle.Bold),
             ForeColor = _theme.Text,
             TextAlign = ContentAlignment.MiddleLeft
@@ -58,13 +61,13 @@ public sealed class SettingsForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
-            RowCount = 9,
+            RowCount = 10,
             BackColor = _theme.Surface,
             Padding = new Padding(16)
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
-        for (var i = 0; i < 7; i++)
+        for (var i = 0; i < 8; i++)
         {
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
         }
@@ -72,24 +75,25 @@ public sealed class SettingsForm : Form
         panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         root.Controls.Add(panel, 0, 1);
 
-        AddNumberRow(panel, 0, "\u91c7\u6837\u95f4\u9694\uff08\u79d2\uff09", _sampleSeconds, 1, 60);
-        AddNumberRow(panel, 1, "\u7a7a\u95f2\u5224\u5b9a\uff08\u5206\u949f\uff09", _idleMinutes, 1, 240);
-        AddCheckRow(panel, 2, "\u5f00\u673a\u81ea\u542f", _startWithWindows);
-        AddCheckRow(panel, 3, "\u542f\u52a8\u540e\u76f4\u63a5\u6700\u5c0f\u5316\u5230\u540e\u53f0", _startMinimized);
-        AddCheckRow(panel, 4, "\u70b9\u51fb\u5173\u95ed\u6309\u94ae\u65f6\u6700\u5c0f\u5316\u5230\u540e\u53f0", _minimizeOnClose);
-        AddCheckRow(panel, 5, "\u5217\u8868\u4e2d\u663e\u793a\u7a7a\u95f2\u65f6\u95f4", _includeIdle);
+        AddNumberRow(panel, 0, _texts.SampleSeconds, _sampleSeconds, 1, 60);
+        AddNumberRow(panel, 1, _texts.IdleMinutes, _idleMinutes, 1, 240);
+        AddCheckRow(panel, 2, _texts.StartWithWindows, _startWithWindows);
+        AddCheckRow(panel, 3, _texts.StartMinimized, _startMinimized);
+        AddCheckRow(panel, 4, _texts.MinimizeOnClose, _minimizeOnClose);
+        AddCheckRow(panel, 5, _texts.IncludeIdle, _includeIdle);
         AddThemeRow(panel, 6);
+        AddLanguageRow(panel, 7);
 
         var hint = new Label
         {
             Dock = DockStyle.Fill,
-            Text = "\u8bbe\u7f6e\u4f1a\u4fdd\u5b58\u5728\u5f53\u524d\u7528\u6237\u7684\u672c\u5730\u5e94\u7528\u6570\u636e\u76ee\u5f55\u3002",
+            Text = _texts.SettingsHint,
             ForeColor = _theme.Muted,
             TextAlign = ContentAlignment.TopLeft,
             AutoEllipsis = true,
             Padding = new Padding(0, 10, 0, 0)
         };
-        panel.Controls.Add(hint, 0, 7);
+        panel.Controls.Add(hint, 0, 8);
         panel.SetColumnSpan(hint, 2);
 
         var buttonHost = new Panel
@@ -106,8 +110,8 @@ public sealed class SettingsForm : Form
             BackColor = BackColor,
             WrapContents = false
         };
-        var ok = MakeButton("\u4fdd\u5b58", DialogResult.OK);
-        var cancel = MakeButton("\u53d6\u6d88", DialogResult.Cancel);
+        var ok = MakeButton(_texts.Save, DialogResult.OK);
+        var cancel = MakeButton(_texts.Cancel, DialogResult.Cancel);
         ok.Click += (_, _) => SaveValues();
         buttons.Controls.Add(ok);
         buttons.Controls.Add(cancel);
@@ -151,18 +155,34 @@ public sealed class SettingsForm : Form
 
     private void AddThemeRow(TableLayoutPanel panel, int row)
     {
-        panel.Controls.Add(MakeLabel("\u5916\u89c2\u4e3b\u9898"), 0, row);
+        panel.Controls.Add(MakeLabel(_texts.Theme), 0, row);
         _themeMode.Dock = DockStyle.Fill;
         _themeMode.DropDownStyle = ComboBoxStyle.DropDownList;
         _themeMode.Items.AddRange(
         [
-            new ThemeOption(AppThemeMode.System, "\u8ddf\u968f\u7cfb\u7edf"),
-            new ThemeOption(AppThemeMode.Light, "\u6d45\u8272"),
-            new ThemeOption(AppThemeMode.Dark, "\u6df1\u8272")
+            new ThemeOption(AppThemeMode.System, _texts.FollowSystem),
+            new ThemeOption(AppThemeMode.Light, _texts.Light),
+            new ThemeOption(AppThemeMode.Dark, _texts.Dark)
         ]);
         _themeMode.BackColor = _theme.Surface;
         _themeMode.ForeColor = _theme.Text;
         panel.Controls.Add(_themeMode, 1, row);
+    }
+
+    private void AddLanguageRow(TableLayoutPanel panel, int row)
+    {
+        panel.Controls.Add(MakeLabel(_texts.Language), 0, row);
+        _language.Dock = DockStyle.Fill;
+        _language.DropDownStyle = ComboBoxStyle.DropDownList;
+        _language.Items.AddRange(
+        [
+            new LanguageOption(AppLanguage.System, _texts.FollowSystem),
+            new LanguageOption(AppLanguage.ChineseSimplified, _texts.SimplifiedChinese),
+            new LanguageOption(AppLanguage.English, _texts.English)
+        ]);
+        _language.BackColor = _theme.Surface;
+        _language.ForeColor = _theme.Text;
+        panel.Controls.Add(_language, 1, row);
     }
 
     private Label MakeLabel(string text) => new()
@@ -194,6 +214,20 @@ public sealed class SettingsForm : Form
         {
             _themeMode.SelectedIndex = 0;
         }
+
+        for (var i = 0; i < _language.Items.Count; i++)
+        {
+            if (_language.Items[i] is LanguageOption option && option.Language == _settings.Language)
+            {
+                _language.SelectedIndex = i;
+                break;
+            }
+        }
+
+        if (_language.SelectedIndex < 0)
+        {
+            _language.SelectedIndex = 0;
+        }
     }
 
     private void SaveValues()
@@ -208,11 +242,21 @@ public sealed class SettingsForm : Form
         {
             _settings.ThemeMode = option.Mode;
         }
+        if (_language.SelectedItem is LanguageOption language)
+        {
+            _settings.Language = language.Language;
+        }
     }
 
     private sealed class ThemeOption(AppThemeMode mode, string label)
     {
         public AppThemeMode Mode { get; } = mode;
+        public override string ToString() => label;
+    }
+
+    private sealed class LanguageOption(AppLanguage language, string label)
+    {
+        public AppLanguage Language { get; } = language;
         public override string ToString() => label;
     }
 }

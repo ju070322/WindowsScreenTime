@@ -9,7 +9,7 @@ public sealed class SetupForm : Form
 {
     private const string AppName = "Windows Screen Time";
     private const string FolderName = "WindowsScreenTime";
-    private const string AppVersion = "1.4.2";
+    private const string AppVersion = "1.4.3";
     private const string Publisher = "\u54c8\u547c\u547c\u5417";
     private const string RegistryKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\WindowsScreenTime";
 
@@ -19,6 +19,7 @@ public sealed class SetupForm : Form
     private readonly Button _installButton = new();
     private readonly Button _browseButton = new();
     private readonly Button _cancelButton = new();
+    private readonly CheckBox _createDesktopShortcut = new();
     private readonly CheckBox _launchAfterInstall = new();
     private readonly Panel _finishOptions = new();
 
@@ -122,12 +123,13 @@ public sealed class SetupForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 6,
+            RowCount = 7,
             BackColor = panel.BackColor
         };
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 70));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
@@ -171,6 +173,13 @@ public sealed class SetupForm : Form
         pathRow.Controls.Add(_browseButton, 1, 0);
         layout.Controls.Add(pathRow, 0, 2);
 
+        _createDesktopShortcut.Text = "\u521b\u5efa\u684c\u9762\u5feb\u6377\u65b9\u5f0f";
+        _createDesktopShortcut.Checked = true;
+        _createDesktopShortcut.AutoSize = true;
+        _createDesktopShortcut.ForeColor = Color.FromArgb(51, 65, 85);
+        _createDesktopShortcut.Dock = DockStyle.Fill;
+        layout.Controls.Add(_createDesktopShortcut, 0, 3);
+
         _progress.Dock = DockStyle.Bottom;
         _progress.Height = 18;
         _progress.Style = ProgressBarStyle.Continuous;
@@ -181,11 +190,11 @@ public sealed class SetupForm : Form
         var progressHost = new Panel { Dock = DockStyle.Fill, BackColor = panel.BackColor };
         progressHost.Controls.Add(_progress);
         progressHost.Controls.Add(_status);
-        layout.Controls.Add(progressHost, 0, 3);
+        layout.Controls.Add(progressHost, 0, 4);
 
         _finishOptions.Dock = DockStyle.Fill;
         _finishOptions.BackColor = panel.BackColor;
-        layout.Controls.Add(_finishOptions, 0, 4);
+        layout.Controls.Add(_finishOptions, 0, 5);
 
         var buttons = new FlowLayoutPanel
         {
@@ -210,7 +219,7 @@ public sealed class SetupForm : Form
 
         buttons.Controls.Add(_installButton);
         buttons.Controls.Add(_cancelButton);
-        layout.Controls.Add(buttons, 0, 5);
+        layout.Controls.Add(buttons, 0, 6);
         return panel;
     }
 
@@ -232,6 +241,7 @@ public sealed class SetupForm : Form
         {
             string exePath = string.Empty;
             string installDir = string.Empty;
+            var createDesktopShortcut = _createDesktopShortcut.Checked;
 
             await Task.Run(() =>
             {
@@ -258,11 +268,14 @@ public sealed class SetupForm : Form
                     exePath,
                     installDir,
                     iconPath);
-                CreateShortcut(
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), "Windows Screen Time.lnk"),
-                    exePath,
-                    installDir,
-                    iconPath);
+                if (createDesktopShortcut)
+                {
+                    CreateShortcut(
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), "Windows Screen Time.lnk"),
+                        exePath,
+                        installDir,
+                        iconPath);
+                }
 
                 UpdateProgress(82, "\u6b63\u5728\u6ce8\u518c\u5378\u8f7d\u4fe1\u606f...");
                 RegisterUninstallInfo(installDir, exePath, uninstallerPath, iconPath);
@@ -316,6 +329,7 @@ public sealed class SetupForm : Form
         _browseButton.Enabled = !busy;
         _cancelButton.Enabled = !busy;
         _installPath.Enabled = !busy;
+        _createDesktopShortcut.Enabled = !busy;
     }
 
     private void SetFinished()
@@ -326,6 +340,7 @@ public sealed class SetupForm : Form
         _cancelButton.Enabled = true;
         _cancelButton.Text = "\u5173\u95ed";
         _installPath.Enabled = false;
+        _createDesktopShortcut.Enabled = false;
         ShowLaunchAfterInstallOption();
     }
 

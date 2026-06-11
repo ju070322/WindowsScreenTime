@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace WindowsScreenTimeApp;
@@ -28,16 +29,30 @@ public sealed class MainForm : Form
     private readonly NotifyIcon _notifyIcon;
     private readonly Icon _appIcon;
     private AppTheme _theme;
+    private Texts _texts;
+    private readonly Label _titleLabel = new();
+    private readonly Label _viewSectionLabel = new();
+    private readonly Label _actionSectionLabel = new();
+    private readonly Label _versionLabel = new();
+    private readonly Label _usageTitleLabel = new();
     private readonly Label _bootValue = new();
     private readonly Label _foregroundValue = new();
     private readonly Label _backgroundValue = new();
     private readonly Label _currentValue = new();
+    private readonly Label _bootLabel = new();
+    private readonly Label _foregroundLabel = new();
+    private readonly Label _backgroundLabel = new();
+    private readonly Label _currentLabel = new();
     private readonly BarChartPanel _chart = new();
     private readonly RingChartPanel _ringChart = new();
     private readonly ListView _usageList = new();
     private readonly Label _emptyState = new();
     private readonly Button _todayNav;
     private readonly Button _weekNav;
+    private readonly Button _exportNav;
+    private readonly Button _importNav;
+    private readonly Button _settingsNav;
+    private readonly Button _resetNav;
     private readonly Button _barTab;
     private readonly Button _ringTab;
     private ChartMode _chartMode = ChartMode.Bar;
@@ -57,16 +72,21 @@ public sealed class MainForm : Form
 
         _settings = AppSettings.Load();
         _theme = AppTheme.Resolve(_settings.ThemeMode);
+        _texts = Texts.Resolve(_settings.Language);
         BackColor = _theme.Window;
         _tracker = new ActivityTracker(_settings);
         _tracker.Updated += (_, _) => RefreshData();
         _notifyIcon = CreateNotifyIcon();
         SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
 
-        _todayNav = MakeNavButton("\u4eca\u65e5\u4f7f\u7528\u65f6\u95f4", (_, _) => SetPeriod(UsagePeriod.Day));
-        _weekNav = MakeNavButton("\u672c\u5468\u4f7f\u7528\u65f6\u95f4", (_, _) => SetPeriod(UsagePeriod.Week));
-        _barTab = MakeTabButton("\u67f1\u72b6\u56fe", (_, _) => SetChartMode(ChartMode.Bar), true);
-        _ringTab = MakeTabButton("\u5706\u73af\u56fe", (_, _) => SetChartMode(ChartMode.Ring), false);
+        _todayNav = MakeNavButton(_texts.Today, (_, _) => SetPeriod(UsagePeriod.Day));
+        _weekNav = MakeNavButton(_texts.Week, (_, _) => SetPeriod(UsagePeriod.Week));
+        _exportNav = MakeNavButton(_texts.ExportData, (_, _) => ExportData());
+        _importNav = MakeNavButton(_texts.ImportData, (_, _) => ImportData());
+        _settingsNav = MakeNavButton(_texts.Settings, (_, _) => OpenSettings());
+        _resetNav = MakeNavButton(_texts.ResetStats, (_, _) => ResetData());
+        _barTab = MakeTabButton(_texts.BarChart, (_, _) => SetChartMode(ChartMode.Bar), true);
+        _ringTab = MakeTabButton(_texts.RingChart, (_, _) => SetChartMode(ChartMode.Ring), false);
 
         BuildLayout();
         _tracker.Start();
@@ -146,40 +166,36 @@ public sealed class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 124));
         sidebar.Controls.Add(layout);
 
-        layout.Controls.Add(new Label
-        {
-            Dock = DockStyle.Fill,
-            Text = "Windows\r\nScreen Time",
-            Font = new Font(Font.FontFamily, 15F, FontStyle.Bold),
-            ForeColor = _theme.Text,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Tag = "text"
-        }, 0, 0);
+        _titleLabel.Dock = DockStyle.Fill;
+        _titleLabel.Text = "Windows\r\nScreen Time";
+        _titleLabel.Font = new Font(Font.FontFamily, 15F, FontStyle.Bold);
+        _titleLabel.ForeColor = _theme.Text;
+        _titleLabel.TextAlign = ContentAlignment.MiddleLeft;
+        _titleLabel.Tag = "text";
+        layout.Controls.Add(_titleLabel, 0, 0);
 
-        var viewSection = MakeSidebarSection("\u89c6\u56fe");
+        var viewSection = MakeSidebarSection(_viewSectionLabel, _texts.View);
         viewSection.Controls.Add(_todayNav);
         viewSection.Controls.Add(_weekNav);
         layout.Controls.Add(viewSection, 0, 1);
 
-        var actionSection = MakeSidebarSection("\u64cd\u4f5c");
-        actionSection.Controls.Add(MakeNavButton("\u5bfc\u51fa\u6570\u636e", (_, _) => ExportData()));
-        actionSection.Controls.Add(MakeNavButton("\u5bfc\u5165\u6570\u636e", (_, _) => ImportData()));
-        actionSection.Controls.Add(MakeNavButton("\u8bbe\u7f6e", (_, _) => OpenSettings()));
-        actionSection.Controls.Add(MakeNavButton("\u91cd\u7f6e\u7edf\u8ba1", (_, _) => ResetData()));
+        var actionSection = MakeSidebarSection(_actionSectionLabel, _texts.Actions);
+        actionSection.Controls.Add(_exportNav);
+        actionSection.Controls.Add(_importNav);
+        actionSection.Controls.Add(_settingsNav);
+        actionSection.Controls.Add(_resetNav);
         layout.Controls.Add(actionSection, 0, 2);
 
-        layout.Controls.Add(new Label
-        {
-            Dock = DockStyle.Fill,
-            Text = $"\u7248\u672c {AppInfo.Version}\r\n\u4f5c\u8005\uff1a{AppInfo.Author}\r\n{AppInfo.ProjectUrl}",
-            ForeColor = _theme.Muted,
-            TextAlign = ContentAlignment.BottomLeft,
-            Tag = "muted"
-        }, 0, 4);
+        _versionLabel.Dock = DockStyle.Fill;
+        _versionLabel.Text = $"{_texts.Version} {AppInfo.Version}\r\n{_texts.Author}: {AppInfo.Author}\r\n{AppInfo.ProjectUrl}";
+        _versionLabel.ForeColor = _theme.Muted;
+        _versionLabel.TextAlign = ContentAlignment.BottomLeft;
+        _versionLabel.Tag = "muted";
+        layout.Controls.Add(_versionLabel, 0, 4);
         return sidebar;
     }
 
-    private FlowLayoutPanel MakeSidebarSection(string title)
+    private FlowLayoutPanel MakeSidebarSection(Label label, string title)
     {
         var section = new FlowLayoutPanel
         {
@@ -190,15 +206,13 @@ public sealed class MainForm : Form
             Padding = new Padding(0, 8, 0, 0),
             Tag = "sidebar"
         };
-        section.Controls.Add(new Label
-        {
-            Width = 222,
-            Height = 24,
-            Text = title,
-            ForeColor = _theme.Muted,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Tag = "muted"
-        });
+        label.Width = 222;
+        label.Height = 24;
+        label.Text = title;
+        label.ForeColor = _theme.Muted;
+        label.TextAlign = ContentAlignment.MiddleLeft;
+        label.Tag = "muted";
+        section.Controls.Add(label);
         return section;
     }
 
@@ -238,10 +252,20 @@ public sealed class MainForm : Form
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
         }
 
-        grid.Controls.Add(MakeMetric("\u5f00\u673a\u65f6\u95f4", _bootValue), 0, 0);
-        grid.Controls.Add(MakeMetric("\u524d\u53f0\u65f6\u95f4", _foregroundValue), 1, 0);
-        grid.Controls.Add(MakeMetric("\u540e\u53f0\u65f6\u95f4", _backgroundValue), 2, 0);
-        grid.Controls.Add(MakeMetric("\u5f53\u524d\u5e94\u7528", _currentValue), 3, 0);
+        var metrics = new[]
+        {
+            MakeMetric(_texts.Uptime, _bootLabel, _bootValue),
+            MakeMetric(_texts.ForegroundTime, _foregroundLabel, _foregroundValue),
+            MakeMetric(_texts.BackgroundTime, _backgroundLabel, _backgroundValue),
+            MakeMetric(_texts.CurrentApp, _currentLabel, _currentValue)
+        };
+
+        for (var i = 0; i < metrics.Length; i++)
+        {
+            metrics[i].Margin = new Padding(0, 0, i == metrics.Length - 1 ? 0 : 12, 4);
+            grid.Controls.Add(metrics[i], i, 0);
+        }
+
         return grid;
     }
 
@@ -276,8 +300,10 @@ public sealed class MainForm : Form
         var chartHost = new Panel { Dock = DockStyle.Fill, BackColor = _theme.Surface, Tag = "surface" };
         _chart.Dock = DockStyle.Fill;
         _chart.ApplyTheme(_theme);
+        _chart.ApplyTexts(_texts);
         _ringChart.Dock = DockStyle.Fill;
         _ringChart.ApplyTheme(_theme);
+        _ringChart.ApplyTexts(_texts);
         _ringChart.Visible = false;
         chartHost.Controls.Add(_ringChart);
         chartHost.Controls.Add(_chart);
@@ -303,34 +329,40 @@ public sealed class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        layout.Controls.Add(new Label
-        {
-            Dock = DockStyle.Fill,
-            Text = "\u5e94\u7528\u660e\u7ec6",
-            Font = new Font(Font.FontFamily, 13F, FontStyle.Bold),
-            ForeColor = _theme.Text,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Tag = "text"
-        }, 0, 0);
+        _usageTitleLabel.Dock = DockStyle.Fill;
+        _usageTitleLabel.Text = _texts.UsageDetails;
+        _usageTitleLabel.Font = new Font(Font.FontFamily, 13F, FontStyle.Bold);
+        _usageTitleLabel.ForeColor = _theme.Text;
+        _usageTitleLabel.TextAlign = ContentAlignment.MiddleLeft;
+        _usageTitleLabel.Tag = "text";
+        layout.Controls.Add(_usageTitleLabel, 0, 0);
 
         _usageList.Dock = DockStyle.Fill;
         _usageList.View = View.Details;
         _usageList.FullRowSelect = true;
         _usageList.GridLines = false;
         _usageList.BorderStyle = BorderStyle.None;
+        _usageList.OwnerDraw = true;
+        _usageList.HideSelection = false;
         _usageList.BackColor = _theme.Surface;
         _usageList.ForeColor = _theme.Text;
-        _usageList.Columns.Add("\u5e94\u7528", 210);
-        _usageList.Columns.Add("\u524d\u53f0", 110);
-        _usageList.Columns.Add("\u540e\u53f0", 110);
-        _usageList.Columns.Add("\u603b\u65f6\u95f4", 110);
-        _usageList.Columns.Add("\u5360\u6bd4", 80);
-        _usageList.Columns.Add("\u6700\u8fd1\u7a97\u53e3\u6807\u9898", 520);
+        _usageList.Columns.Add(_texts.AppColumn, 210);
+        _usageList.Columns.Add(_texts.ForegroundColumn, 110);
+        _usageList.Columns.Add(_texts.BackgroundColumn, 110);
+        _usageList.Columns.Add(_texts.TotalColumn, 110);
+        _usageList.Columns.Add(_texts.ShareColumn, 80);
+        _usageList.Columns.Add(_texts.RecentWindowTitle, 520);
         _usageList.ColumnClick += OnUsageColumnClick;
+        _usageList.DrawColumnHeader += DrawUsageColumnHeader;
+        _usageList.DrawItem += (_, _) => { };
+        _usageList.DrawSubItem += DrawUsageSubItem;
+        _usageList.Resize += (_, _) => UpdateUsageColumnWidths();
+        _usageList.HandleCreated += (_, _) => ApplyListViewSystemTheme();
         UpdateUsageColumnHeaders();
+        UpdateUsageColumnWidths();
 
         _emptyState.Dock = DockStyle.Fill;
-        _emptyState.Text = "\u7edf\u8ba1\u51e0\u79d2\u540e\u4f1a\u663e\u793a\u5e94\u7528\u660e\u7ec6\u3002";
+        _emptyState.Text = _texts.EmptyDetails;
         _emptyState.ForeColor = _theme.Muted;
         _emptyState.TextAlign = ContentAlignment.MiddleCenter;
         _emptyState.Tag = "muted";
@@ -344,20 +376,17 @@ public sealed class MainForm : Form
         return panel;
     }
 
-    private Control MakeMetric(string labelText, Label valueLabel)
+    private Control MakeMetric(string labelText, Label label, Label valueLabel)
     {
         var panel = MakePanel();
         panel.Margin = new Padding(0, 0, 12, 16);
         panel.Padding = new Padding(16, 12, 16, 12);
 
-        var label = new Label
-        {
-            Dock = DockStyle.Top,
-            Height = 24,
-            Text = labelText,
-            ForeColor = _theme.Muted,
-            Tag = "muted"
-        };
+        label.Dock = DockStyle.Top;
+        label.Height = 24;
+        label.Text = labelText;
+        label.ForeColor = _theme.Muted;
+        label.Tag = "muted";
         valueLabel.Dock = DockStyle.Fill;
         valueLabel.Font = new Font(Font.FontFamily, 17F, FontStyle.Bold);
         valueLabel.ForeColor = _theme.Text;
@@ -381,7 +410,7 @@ public sealed class MainForm : Form
 
     private Button MakeButton(string text, EventHandler onClick, bool primary)
     {
-        var button = new Button
+        var button = new FocuslessButton
         {
             Text = text,
             Dock = DockStyle.Fill,
@@ -400,7 +429,7 @@ public sealed class MainForm : Form
 
     private Button MakeNavButton(string text, EventHandler onClick)
     {
-        var button = new Button
+        var button = new FocuslessButton
         {
             Text = text,
             Width = 222,
@@ -420,7 +449,7 @@ public sealed class MainForm : Form
 
     private Button MakeTabButton(string text, EventHandler onClick, bool active)
     {
-        var button = new Button
+        var button = new FocuslessButton
         {
             Text = text,
             Width = 92,
@@ -439,24 +468,32 @@ public sealed class MainForm : Form
 
     private NotifyIcon CreateNotifyIcon()
     {
-        var menu = new ContextMenuStrip();
-        menu.Items.Add("\u6253\u5f00", null, (_, _) => ShowFromTray());
-        menu.Items.Add("\u5bfc\u51fa\u6570\u636e", null, (_, _) => ExportData());
-        menu.Items.Add("\u5bfc\u5165\u6570\u636e", null, (_, _) => ImportData());
-        menu.Items.Add("\u8bbe\u7f6e", null, (_, _) => OpenSettings());
-        menu.Items.Add("\u91cd\u7f6e\u7edf\u8ba1", null, (_, _) => ResetData());
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("\u9000\u51fa", null, (_, _) => ExitApplication());
-
         var icon = new NotifyIcon
         {
             Text = "Windows Screen Time",
             Icon = _appIcon,
             Visible = true,
-            ContextMenuStrip = menu
+            ContextMenuStrip = CreateTrayMenu()
         };
         icon.DoubleClick += (_, _) => ShowFromTray();
         return icon;
+    }
+
+    private ContextMenuStrip CreateTrayMenu()
+    {
+        var menu = new ContextMenuStrip
+        {
+            BackColor = _theme.Surface,
+            ForeColor = _theme.Text
+        };
+        menu.Items.Add(_texts.Open, null, (_, _) => ShowFromTray());
+        menu.Items.Add(_texts.ExportData, null, (_, _) => ExportData());
+        menu.Items.Add(_texts.ImportData, null, (_, _) => ImportData());
+        menu.Items.Add(_texts.Settings, null, (_, _) => OpenSettings());
+        menu.Items.Add(_texts.ResetStats, null, (_, _) => ResetData());
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(_texts.Exit, null, (_, _) => ExitApplication());
+        return menu;
     }
 
     private void RefreshData()
@@ -465,7 +502,7 @@ public sealed class MainForm : Form
         _foregroundValue.Text = UiFormat.Duration(_tracker.ForegroundTotal);
         _backgroundValue.Text = UiFormat.Duration(_tracker.BackgroundTotal);
         _currentValue.Text = _tracker.Current.AppName;
-        _notifyIcon.Text = ClipNotifyText($"Windows Screen Time\n\u5f53\u524d\uff1a{_tracker.Current.AppName}\n\u603b\u8ba1\uff1a{UiFormat.Duration(_tracker.ActiveTotal)}");
+        _notifyIcon.Text = ClipNotifyText($"Windows Screen Time\n{_texts.CurrentNotify}: {_tracker.Current.AppName}\n{_texts.TotalNotify}: {UiFormat.Duration(_tracker.ActiveTotal)}");
         RefreshNavState();
 
         var items = _tracker.Items
@@ -574,12 +611,12 @@ public sealed class MainForm : Form
 
         string[] names =
         [
-            "\u5e94\u7528",
-            "\u524d\u53f0",
-            "\u540e\u53f0",
-            "\u603b\u65f6\u95f4",
-            "\u5360\u6bd4",
-            "\u6700\u8fd1\u7a97\u53e3\u6807\u9898"
+            _texts.AppColumn,
+            _texts.ForegroundColumn,
+            _texts.BackgroundColumn,
+            _texts.TotalColumn,
+            _texts.ShareColumn,
+            _texts.RecentWindowTitle
         ];
 
         for (var i = 0; i < names.Length; i++)
@@ -587,6 +624,29 @@ public sealed class MainForm : Form
             var marker = i == (int)_sortColumn ? (_sortDescending ? " \u2193" : " \u2191") : string.Empty;
             _usageList.Columns[i].Text = names[i] + marker;
         }
+    }
+
+    private void UpdateUsageColumnWidths()
+    {
+        if (_usageList.Columns.Count < 6 || _usageList.ClientSize.Width <= 0)
+        {
+            return;
+        }
+
+        var width = Math.Max(680, _usageList.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 4);
+        var app = Math.Max(150, (int)(width * 0.18));
+        var foreground = Math.Max(92, (int)(width * 0.12));
+        var background = Math.Max(92, (int)(width * 0.12));
+        var total = Math.Max(92, (int)(width * 0.12));
+        var share = Math.Max(72, (int)(width * 0.08));
+        var title = Math.Max(180, width - app - foreground - background - total - share);
+
+        _usageList.Columns[0].Width = app;
+        _usageList.Columns[1].Width = foreground;
+        _usageList.Columns[2].Width = background;
+        _usageList.Columns[3].Width = total;
+        _usageList.Columns[4].Width = share;
+        _usageList.Columns[5].Width = title;
     }
 
     private void RefreshChartTabs()
@@ -624,8 +684,8 @@ public sealed class MainForm : Form
     {
         using var dialog = new SaveFileDialog
         {
-            Title = "\u5bfc\u51fa\u4f7f\u7528\u6570\u636e",
-            Filter = "Windows Screen Time \u6570\u636e (*.wstdata)|*.wstdata|JSON \u6587\u4ef6 (*.json)|*.json",
+            Title = _texts.ExportDialogTitle,
+            Filter = _texts.DataFilter,
             FileName = $"WindowsScreenTime-{DateTime.Now:yyyyMMdd-HHmm}.wstdata"
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -636,11 +696,11 @@ public sealed class MainForm : Form
         try
         {
             _tracker.ExportTo(dialog.FileName, _settings);
-            MessageBox.Show("\u6570\u636e\u5df2\u5bfc\u51fa\u3002", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(_texts.DataExported, _texts.AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"\u5bfc\u51fa\u5931\u8d25\uff1a{ex.Message}", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"{_texts.ExportFailed} {ex.Message}", _texts.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -648,8 +708,8 @@ public sealed class MainForm : Form
     {
         using var dialog = new OpenFileDialog
         {
-            Title = "\u5bfc\u5165\u4f7f\u7528\u6570\u636e",
-            Filter = "Windows Screen Time \u6570\u636e (*.wstdata;*.json)|*.wstdata;*.json|\u6240\u6709\u6587\u4ef6 (*.*)|*.*"
+            Title = _texts.ImportDialogTitle,
+            Filter = _texts.ImportFilter
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
@@ -657,8 +717,8 @@ public sealed class MainForm : Form
         }
 
         var confirm = MessageBox.Show(
-            "\u5bfc\u5165\u4f1a\u628a\u6587\u4ef6\u4e2d\u7684\u4f7f\u7528\u65f6\u95f4\u5408\u5e76\u5230\u5f53\u524d\u7edf\u8ba1\uff0c\u5e76\u7ee7\u627f\u5bfc\u5165\u6587\u4ef6\u91cc\u7684\u8bbe\u7f6e\u3002\u662f\u5426\u7ee7\u7eed\uff1f",
-            "Windows Screen Time",
+            _texts.ImportConfirm,
+            _texts.AppName,
             MessageBoxButtons.OKCancel,
             MessageBoxIcon.Question);
         if (confirm != DialogResult.OK)
@@ -676,21 +736,22 @@ public sealed class MainForm : Form
                 _settings.Save();
                 _tracker.ApplySettings(_settings);
                 ApplyTheme(AppTheme.Resolve(_settings.ThemeMode));
+                ApplyTexts(Texts.Resolve(_settings.Language));
             }
             RefreshData();
-            MessageBox.Show("\u6570\u636e\u5df2\u5bfc\u5165\u5e76\u5408\u5e76\u3002", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(_texts.DataImported, _texts.AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"\u5bfc\u5165\u5931\u8d25\uff1a{ex.Message}", "Windows Screen Time", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"{_texts.ImportFailed} {ex.Message}", _texts.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     private void ResetData()
     {
         var confirm = MessageBox.Show(
-            "\u786e\u5b9a\u8981\u6e05\u7a7a\u5f53\u524d\u7d2f\u8ba1\u7edf\u8ba1\u5417\uff1f\u8fd9\u4e0d\u4f1a\u5220\u9664\u5bfc\u51fa\u7684\u5907\u4efd\u6587\u4ef6\u3002",
-            "Windows Screen Time",
+            _texts.ResetConfirm,
+            _texts.AppName,
             MessageBoxButtons.OKCancel,
             MessageBoxIcon.Warning);
         if (confirm == DialogResult.OK)
@@ -701,7 +762,7 @@ public sealed class MainForm : Form
 
     private void OpenSettings()
     {
-        using var dialog = new SettingsForm(_settings, _theme);
+        using var dialog = new SettingsForm(_settings, _theme, _texts);
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
@@ -713,11 +774,12 @@ public sealed class MainForm : Form
             _settings.Save();
             _tracker.ApplySettings(_settings);
             ApplyTheme(AppTheme.Resolve(_settings.ThemeMode));
+            ApplyTexts(Texts.Resolve(_settings.Language));
             RefreshData();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"\u4fdd\u5b58\u8bbe\u7f6e\u5931\u8d25\uff1a{ex.Message}", "Windows Screen Time",
+            MessageBox.Show($"{_texts.SaveSettingsFailed} {ex.Message}", _texts.AppName,
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -753,9 +815,93 @@ public sealed class MainForm : Form
         _ringChart.ApplyTheme(_theme);
         _usageList.BackColor = _theme.Surface;
         _usageList.ForeColor = _theme.Text;
+        ApplyListViewSystemTheme();
+        _usageList.Invalidate();
+        if (_notifyIcon.ContextMenuStrip is not null)
+        {
+            _notifyIcon.ContextMenuStrip.BackColor = _theme.Surface;
+            _notifyIcon.ContextMenuStrip.ForeColor = _theme.Text;
+        }
         RefreshNavState();
         RefreshChartTabs();
         Invalidate(true);
+    }
+
+    private void ApplyTexts(Texts texts)
+    {
+        _texts = texts;
+        Text = $"{_texts.AppName} {AppInfo.Version}";
+        _todayNav.Text = _texts.Today;
+        _weekNav.Text = _texts.Week;
+        _exportNav.Text = _texts.ExportData;
+        _importNav.Text = _texts.ImportData;
+        _settingsNav.Text = _texts.Settings;
+        _resetNav.Text = _texts.ResetStats;
+        _barTab.Text = _texts.BarChart;
+        _ringTab.Text = _texts.RingChart;
+        _viewSectionLabel.Text = _texts.View;
+        _actionSectionLabel.Text = _texts.Actions;
+        _versionLabel.Text = $"{_texts.Version} {AppInfo.Version}\r\n{_texts.Author}: {AppInfo.Author}\r\n{AppInfo.ProjectUrl}";
+        _bootLabel.Text = _texts.Uptime;
+        _foregroundLabel.Text = _texts.ForegroundTime;
+        _backgroundLabel.Text = _texts.BackgroundTime;
+        _currentLabel.Text = _texts.CurrentApp;
+        _usageTitleLabel.Text = _texts.UsageDetails;
+        _emptyState.Text = _texts.EmptyDetails;
+        _chart.ApplyTexts(_texts);
+        _ringChart.ApplyTexts(_texts);
+        UpdateUsageColumnHeaders();
+        _notifyIcon.ContextMenuStrip?.Dispose();
+        _notifyIcon.ContextMenuStrip = CreateTrayMenu();
+        RefreshChartTabs();
+    }
+
+    private void DrawUsageColumnHeader(object? sender, DrawListViewColumnHeaderEventArgs e)
+    {
+        using var back = new SolidBrush(_theme.IsDark ? _theme.ListAlt : _theme.Surface);
+        using var line = new Pen(_theme.Line);
+        e.Graphics.FillRectangle(back, e.Bounds);
+        var textBounds = new Rectangle(e.Bounds.Left + 6, e.Bounds.Top, e.Bounds.Width - 10, e.Bounds.Height);
+        TextRenderer.DrawText(e.Graphics, e.Header?.Text ?? string.Empty, Font ?? SystemFonts.MessageBoxFont, textBounds, _theme.Text,
+            TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+        e.Graphics.DrawLine(line, e.Bounds.Right - 1, e.Bounds.Top + 4, e.Bounds.Right - 1, e.Bounds.Bottom - 4);
+        e.Graphics.DrawLine(line, e.Bounds.Left, e.Bounds.Bottom - 1, e.Bounds.Right, e.Bounds.Bottom - 1);
+    }
+
+    private void DrawUsageSubItem(object? sender, DrawListViewSubItemEventArgs e)
+    {
+        if (e.Item is null || e.SubItem is null)
+        {
+            return;
+        }
+
+        var selected = e.Item.Selected;
+        var rowBack = selected
+            ? _theme.NavActive
+            : e.ItemIndex % 2 == 0 ? _theme.Surface : _theme.ListAlt;
+        var rowText = e.Item.ForeColor;
+        using var back = new SolidBrush(rowBack);
+        e.Graphics.FillRectangle(back, e.Bounds);
+        var textBounds = new Rectangle(e.Bounds.Left + 6, e.Bounds.Top, e.Bounds.Width - 10, e.Bounds.Height);
+        TextRenderer.DrawText(e.Graphics, e.SubItem.Text, Font ?? SystemFonts.MessageBoxFont, textBounds, rowText,
+            TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+    }
+
+    private void ApplyListViewSystemTheme()
+    {
+        if (!_usageList.IsHandleCreated)
+        {
+            return;
+        }
+
+        try
+        {
+            SetWindowTheme(_usageList.Handle, _theme.IsDark ? "DarkMode_Explorer" : "Explorer", null);
+        }
+        catch
+        {
+            // Owner-drawn colors still keep the list readable on systems that ignore this theme hint.
+        }
     }
 
     private void ApplyThemeToControl(Control control)
@@ -880,4 +1026,12 @@ public sealed class MainForm : Form
             return path;
         }
     }
+
+    private sealed class FocuslessButton : Button
+    {
+        protected override bool ShowFocusCues => false;
+    }
+
+    [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+    private static extern int SetWindowTheme(IntPtr hwnd, string? pszSubAppName, string? pszSubIdList);
 }

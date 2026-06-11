@@ -9,6 +9,13 @@ public enum AppThemeMode
     System
 }
 
+public enum AppLanguage
+{
+    System,
+    ChineseSimplified,
+    English
+}
+
 public sealed class AppSettings
 {
     public int SampleSeconds { get; set; } = 3;
@@ -18,6 +25,7 @@ public sealed class AppSettings
     public bool StartWithWindows { get; set; }
     public bool IncludeIdleInList { get; set; } = true;
     public AppThemeMode ThemeMode { get; set; } = AppThemeMode.System;
+    public AppLanguage Language { get; set; } = AppLanguage.System;
 
     public static string AppDataDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WindowsScreenTime");
@@ -47,6 +55,11 @@ public sealed class AppSettings
             {
                 settings.ThemeMode = AppThemeMode.System;
             }
+
+            if (!Enum.IsDefined(settings.Language))
+            {
+                settings.Language = AppLanguage.System;
+            }
             return settings;
         }
         catch
@@ -74,5 +87,6 @@ public sealed class AppSettings
         StartWithWindows = other.StartWithWindows;
         IncludeIdleInList = other.IncludeIdleInList;
         ThemeMode = Enum.IsDefined(other.ThemeMode) ? other.ThemeMode : AppThemeMode.System;
+        Language = Enum.IsDefined(other.Language) ? other.Language : AppLanguage.System;
     }
 }
